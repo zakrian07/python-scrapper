@@ -408,7 +408,7 @@ class Scrapper(Mouser):
                 'sec-fetch-site': 'same-origin',
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36', }
             response = requests.request(
-                "POST", url, headers=headers, data=payload)
+                "POST", url,timeout=9000, headers=headers, data=payload)
             report_response = requests.request(
                 "POST", reporturl, headers=headers, data=payload)
             link = "https://www.phoenixcontact.com/customer/api/v1/product-compliance/report/guid/" + \
