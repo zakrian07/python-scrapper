@@ -426,7 +426,7 @@ class Scrapper(Mouser):
                     return results
         except Exception as e:
             print(e)
-            return {status: 404}
+            return {"status": 404}
 
     def scrap_Rscomponents(self, partnumber):
         headers = {
