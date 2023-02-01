@@ -413,8 +413,10 @@ class Scrapper(Mouser):
                 "POST", reporturl, headers=headers, data=payload)
             link = "https://www.phoenixcontact.com/customer/api/v1/product-compliance/report/guid/" + \
                 report_response.text + "?_locale=en-US&_realm=us"
-
-            res = response.json()
+            if(response):
+             res = response.json()
+            else:
+             return {"status": 404} 
 
             for results in res['items'].values():
 
