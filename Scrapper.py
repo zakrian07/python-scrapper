@@ -407,16 +407,23 @@ class Scrapper(Mouser):
                 'sec-fetch-mode': 'cors',
                 'sec-fetch-site': 'same-origin',
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36', }
-            response = requests.request(
-                "POST", url,timeout=9000000, headers=headers, data=payload)
-            report_response = requests.request(
-                "POST", reporturl, headers=headers,timeout=9000000, data=payload)
+            try:
+                response = requests.request(
+                    "POST", url, timeout=9000000, headers=headers, data=payload)
+            except Exception as f:
+             return {"status": 404}        
+            try:
+               report_response = requests.request(
+                "POST", reporturl, headers=headers, timeout=9000000, data=payload)
+            except Exception as g:
+             return {"status": 404}
+                 
             link = "https://www.phoenixcontact.com/customer/api/v1/product-compliance/report/guid/" + \
                 report_response.text + "?_locale=en-US&_realm=us"
             if(response):
-             res = response.json()
+                res = response.json()
             else:
-             return {"status": 404} 
+                return {"status": 404}
 
             for results in res['items'].values():
 
@@ -574,7 +581,7 @@ class Scrapper(Mouser):
         payload = {}
         headers = {}
         response = requests.request(
-            "GET", url, headers=headers,timeout=1000, data=payload).json()
+            "GET", url, headers=headers, timeout=1000, data=payload).json()
         results = response['itemserviceresult']['data']
         for res in results:
             try:
