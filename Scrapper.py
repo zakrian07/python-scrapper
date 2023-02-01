@@ -410,7 +410,7 @@ class Scrapper(Mouser):
             response = requests.request(
                 "POST", url,timeout=9000, headers=headers, data=payload)
             report_response = requests.request(
-                "POST", reporturl, headers=headers, data=payload)
+                "POST", reporturl, headers=headers,timeout=9000, data=payload)
             link = "https://www.phoenixcontact.com/customer/api/v1/product-compliance/report/guid/" + \
                 report_response.text + "?_locale=en-US&_realm=us"
             if(response):
