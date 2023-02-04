@@ -230,12 +230,13 @@ class Scrapper(Mouser):
 
     def scrap_festo(self, partnumber):
         # print(partnumber)
+        HEADERS = {'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'}
         url = "https://www.festo.com/ca/en/search/autocomplete/SearchBoxComponent?term=" + \
             str(partnumber)
 
         try:
             # request part information from Festo server
-            res = requests.request("GET", url)
+            res = requests.request("GET", url,headers=HEADERS)
         except:
             return {"status": 404}
 
