@@ -42,7 +42,8 @@ def read_item(part_number):
 
 @app.get("/arrow/{part_number}")
 def read_item(part_number):
-    return scrapper.scrap_Arrow(part_number)
+    partnumber = part_number.replace("/", "")
+    return scrapper.scrap_Arrow(partnumber)
 
 
 @app.get("/molex/{part_number}")
@@ -50,7 +51,7 @@ def read_item(part_number):
     return scrapper.scrap_Molex(part_number)
 
 
-@app.post("/molexList")
+@app.post("/molexList_old")
 def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
@@ -64,6 +65,10 @@ def read_item(body: BodyParam):
         print(future.result())
         myList.append(future.result())
     return myList
+
+@app.get("/molexList/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_Molex(part_number)  
 
 
 async def get_body(request: Request):
