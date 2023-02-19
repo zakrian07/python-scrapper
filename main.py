@@ -158,5 +158,3 @@ def read_item(part_number):
 @app.get("/scrap_festo/{part_number}")
 def read_item(part_number):
     return scrapper.scrap_festo(part_number)
-if __name__ == "__main__":
-     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
