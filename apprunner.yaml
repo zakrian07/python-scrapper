@@ -1,0 +1,9 @@
+version: 1.0
+runtime: python3.8.16 
+build:
+  commands:
+    build:
+      - pip install pipenv
+      - pipenv install 
+run: 
+  command: python app.py
