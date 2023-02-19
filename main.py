@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from Scrapper import Scrapper
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor
+import uvicorn
 from typing import Set
 import json
 
@@ -27,6 +28,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
+    print("umer")
     return {"Part Number Scrapper": "Welcome!"}
 
 
@@ -156,3 +158,5 @@ def read_item(part_number):
 @app.get("/scrap_festo/{part_number}")
 def read_item(part_number):
     return scrapper.scrap_festo(part_number)
+if __name__ == "__main__":
+     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
