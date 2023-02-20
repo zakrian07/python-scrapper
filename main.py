@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from Scrapper import Scrapper
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor
-import uvicorn
 from typing import Set
 import json
 
@@ -28,7 +27,6 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    print("umer")
     return {"Part Number Scrapper": "Welcome!"}
 
 
@@ -68,9 +66,10 @@ def read_item(body: BodyParam):
         myList.append(future.result())
     return myList
 
+
 @app.get("/molexList/{part_number}")
 def read_item(part_number):
-    return scrapper.scrap_Molex(part_number)  
+    return scrapper.scrap_Molex(part_number)
 
 
 async def get_body(request: Request):
@@ -150,6 +149,21 @@ def read_item(part_number):
     return scrapper.scrap_murata(part_number)
 
 
+@app.post("/scrap_murata_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_murata, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
 @app.get("/scrap_newark/{part_number}")
 def read_item(part_number):
     return scrapper.scrap_newark(part_number)
@@ -158,3 +172,63 @@ def read_item(part_number):
 @app.get("/scrap_festo/{part_number}")
 def read_item(part_number):
     return scrapper.scrap_festo(part_number)
+
+
+@app.get("/scrap_fair_rite/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_fair_rite(part_number)
+
+
+@app.post("/scrap_fair_rite_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_fair_rite, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_tdk/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_tdk(part_number)
+
+
+@app.post("/scrap_tdk_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_tdk, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_microchip/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_microchip(part_number)
+
+
+@app.post("/scrap_microchip_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_microchip, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
