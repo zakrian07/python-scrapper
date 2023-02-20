@@ -354,7 +354,7 @@ class Scrapper(Mouser):
 
     def scrap_Molex(self, partnumber):
         headers = {
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         }
         url = "https://www.molex.com/molex/search/partSearch?query=" + \
             urllib.parse.quote(str(partnumber), safe="") + "&pQuery="
