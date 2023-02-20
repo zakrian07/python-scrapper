@@ -356,6 +356,8 @@ class Scrapper(Mouser):
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         }
+        HEADERS = {
+            'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'}
         url = "https://www.molex.com/molex/search/partSearch?query=" + \
             urllib.parse.quote(str(partnumber), safe="") + "&pQuery="
         r = requests.get(url, headers=headers)
