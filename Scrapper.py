@@ -7,7 +7,6 @@ from sites.mouser import Mouser
 import re
 import json
 from sites.Festo import Festo
-import random
 
 
 class Scrapper(Mouser):
@@ -354,36 +353,9 @@ class Scrapper(Mouser):
             return {"status": 404}
 
     def scrap_Molex(self, partnumber):
-        # headers = {
-        #     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-        # }
-        # headers = {
-        #     'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'}
-        
-        headers_list = [
-    # 1. Headers
-    {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:86.0) Gecko/20100101 Firefox/86.0', 
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Cache-Control': 'max-age=0'},
-    # 2. Headers
-    {'sec-ch-ua': '"Google Chrome";v="89", "Chromium";v="89", ";Not A Brand";v="99"',
-        'sec-ch-ua-mobile': '?0',
-        'upgrade-insecure-requests': '1',
-        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/89.0.4389.82 Safari/537.36',
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,'
-                  'image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        'sec-fetch-site': 'none',
-        'sec-fetch-mode': 'navigate',
-        'sec-fetch-user': '?1',
-        'sec-fetch-dest': 'document',
-        'accept-language': 'en-US,en;q=0.9'},
-]
-        headers = random.choice(headers_list)
-
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36'
+        }
         url = "https://www.molex.com/molex/search/partSearch?query=" + \
             urllib.parse.quote(str(partnumber), safe="") + "&pQuery="
         r = requests.get(url, headers=headers)
@@ -534,8 +506,9 @@ class Scrapper(Mouser):
             print(e)
             return {"status": 404}
 
-    def scrap_fair_rite(self, partNumber):
+    async def scrap_fair_rite(self, partNumber):
         try:
+            url = ""
             q_resp = requests.get(
                 'https://www.fair-rite.com/?s=' + str(partNumber))
             qsoup = BeautifulSoup(q_resp.text, 'lxml')
@@ -598,6 +571,57 @@ class Scrapper(Mouser):
 
         return result
 
+    def scrap_allegro(self, partNumber):
+        try:
+            # number_code = re.search(r'[A-Z]+(\d+)', partNumber).group(1)
+            search_response = requests.get(
+                'https://allegromicro.com/all-api/search?q=' + partNumber)
+            print("===========in", search_response.json())
+            for result in search_response.json().get('Items'):
+                if result.get('url'):
+                    product_response = requests.get(result.get('url'))
+
+                    products_soup = BeautifulSoup(
+                        product_response.text, 'lxml')
+
+                    item_list = list()
+                    dsheets = ['https://allegromicro.com' + x.parent.attrs['href']
+                               for x in products_soup.find_all('i', class_="fa fa-file-pdf-o")]
+                    certs = ['https://allegromicro.com' + x.attrs.get('href', '') for x in products_soup.find_all(
+                        "a", {'href': re.compile(".+certificates-of-compliance.+")})]
+
+                    table = products_soup.find(
+                        'div', class_="table-scroll div2")
+                    headers = table.find('thead').find_all('th')
+                    table_header = list()
+                    for th in headers:
+                        table_header.append(th.text.strip())
+
+                    for row in table.find_all('tr'):
+
+                        item = {}
+                        for n, td in enumerate(row.find_all('td')):
+
+                            if table_header[n] == 'Part Number':
+                                item['PartNumber'] = td.text
+                            elif table_header[n] == 'Part Composition /RoHS Data':
+                                item['RoHSData'] = (
+                                    'https://allegromicro.com' + td.find('a').attrs.get('href')) if td.find('a') else None
+                            elif table_header[n] == 'RoHSCompliant':
+                                item['RoHSCompliant'] = td.text
+                            elif table_header[n] == 'Package Type':
+                                item['partName'] = td.text
+
+                    if item:
+                        item['DataSheets'] = dsheets
+                        item['CertificateOfCompliance'] = certs
+                        item_list.append(item)
+                        if item['PartNumber'].lower() == partNumber.lower():
+                            return item
+        except (IndexError, AttributeError, requests.exceptions.MissingSchema):
+            print('part number is not found on server')
+            return {"status": 404}
+
     def scrap_microchip(self, partNumber):
         try:
             url = 'https://www.microchip.com/sitesearch/api/autosuggestapi/GetAutoSuggest?q=' + \
@@ -659,6 +683,72 @@ class Scrapper(Mouser):
             print('part number is not found on server')
             return {"status": 404}
         return result
+
+    def scrap_leespring(self, partNumber):
+        try:
+            payload = {
+                'perpage': 20,
+                'fLen_max': 10000000,
+                'field_published_stock_code_value': partNumber
+            }
+            resp = requests.post(
+                'https://www.leespring.com/compression-springs.php', data=payload)
+            print(resp.json(), "----------- inresp s")
+            for elem in resp.json().get('rdata', []):
+                resp_new = requests.get(
+                    'https://www.leespring.com/compression-specific-new/' + str(elem.get('entity_id')))
+                soup = BeautifulSoup(resp_new.text, 'lxml')
+                partNumber_site = soup.find(
+                    'span', class_="field-content part-number-specific-product").text
+                item = {
+                    'Results': 'Found',
+                    'partNumber': partNumber_site,
+                    'partName': soup.find('span', class_=re.compile(r".*compression-outside-diameter-in-series.*")).text,
+                    'SpecSheet': resp_new.url
+                }
+                return item
+        except (IndexError, AttributeError, requests.exceptions.MissingSchema):
+            print('part number is not found on server')
+            return {"status": 404}
+
+    def scrap_yageo(self, partNumber):
+        try:
+            headers = {
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+                'accept-encoding': 'gzip, deflate, br',
+                'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
+                'cache-control': 'max-age=0',
+                'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': "macOS",
+                'sec-fetch-dest': 'document',
+                'sec-fetch-mode': 'navigate',
+                'sec-fetch-site': 'none',
+                'sec-fetch-user': '?1',
+                'upgrade-insecure-requests': '1',
+            }
+            resp = requests.get(
+                'https://www.yageo.com/en/ProductSearch/PartNumberSearch?part_number=' + str(partNumber), headers=headers)
+            soup = BeautifulSoup(resp.text, 'lxml')
+
+            table = soup.find('table', class_="destory_table item_sort_table")
+            for tr in table.find('tbody').find_all('tr'):
+                partNumber_site = ' '.join(tr.find(
+                    'td', {'data-title': re.compile(r"[pP]art ?Number")}).text.split()).split()[0]
+
+                if partNumber_site.lower().replace(' ', '') == str(partNumber).lower().replace(' ', ''):
+                    pdescr = tr.find(
+                        'td', {'data-title': "Packing Description"})
+
+                    item = {
+                        'partNumber': partNumber_site,
+                        'packingDescription': pdescr.text.strip() if pdescr else None,
+                        'SpecSheet': 'https://www.yageo.com' + tr.find('td', {'data-title': re.compile(r".*[Dd]atasheet.*|Doc\.")}).find('a').attrs['href'],
+                    }
+                    return item
+        except (IndexError, AttributeError, requests.exceptions.MissingSchema):
+            print('part number is not found on server')
+            return {"status": 404}
 
     def scrap_Wago(self, partnumber):
         headers = {
