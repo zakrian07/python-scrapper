@@ -176,7 +176,7 @@ def read_item(part_number):
 
 @app.get("/scrap_fair_rite/{part_number}")
 async def read_item(part_number):
-    return await scrapper.scrap_fair_rite(part_number)
+    return scrapper.scrap_fair_rite(part_number)
 
 
 @app.post("/scrap_fair_rite_list")
@@ -186,7 +186,7 @@ async def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = await executor.submit(scrapper.scrap_fair_rite, (part))
+        future = executor.submit(scrapper.scrap_fair_rite, (part))
         futures.append(future)
 
     for future in futures:
@@ -246,7 +246,7 @@ async def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = await executor.submit(scrapper.scrap_allegro, (part))
+        future = executor.submit(scrapper.scrap_allegro, (part))
         futures.append(future)
 
     for future in futures:
@@ -266,7 +266,7 @@ async def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = await executor.submit(scrapper.scrap_yageo, (part))
+        future = executor.submit(scrapper.scrap_yageo, (part))
         futures.append(future)
 
     for future in futures:
@@ -287,6 +287,87 @@ def read_item(body: BodyParam):
     futures = []
     for part in body.parts:
         future = executor.submit(scrapper.scrap_leespring, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_sager/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_sager(part_number)
+
+
+@app.post("/scrap_sager_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_sager, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_vishay/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_vishay(part_number)
+
+
+@app.post("/scrap_vishay_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_vishay, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+        print(myList)
+    return myList
+
+
+@app.get("/scrap_alliedelectronics/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_alliedelectronics(part_number)
+
+
+@app.post("/scrap_alliedelectronics_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_alliedelectronics, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_rshughes/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_rshughes(part_number)
+
+
+@app.post("/scrap_rshughes_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_rshughes, (part))
         futures.append(future)
 
     for future in futures:
