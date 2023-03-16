@@ -24,3 +24,6 @@ websockets
 lxml
 gunicorn
 pandas
+selenium
+tqdm
+undetected_chromedriver

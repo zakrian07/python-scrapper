@@ -1,3 +1,5 @@
+from urllib.parse import quote_plus
+from bs4.element import NavigableString
 import requests
 from bs4 import BeautifulSoup
 import urllib
@@ -5,6 +7,7 @@ from sites.mouser import Mouser
 import re
 import json
 from sites.Festo import Festo
+# from distributors.rshughes import scrap_rshughes
 
 
 class Scrapper(Mouser):
@@ -16,7 +19,6 @@ class Scrapper(Mouser):
         try:
             url = 'https://www.newark.com/webapp/wcs/stores/servlet/AjaxSearchLookAhead?storeId=10194&catalogId=15003&langId=-1&searchTerm='
             response = requests.get(url + str(partNumber), headers=headers)
-
             soup = BeautifulSoup(response.text, 'lxml')
             table = soup.find('table', class_="searchBoxResultTable")
             tr = table.find_all('tr')[0]
@@ -143,15 +145,15 @@ class Scrapper(Mouser):
 
     def scrap_murata(self, partNumber):
         try:
-            url = 'https://www.murata.com/en-us/products/productdetail?partno=' + partNumber
+            url = 'https://www.murata.com/en-us/products/productdetail?partno=' + \
+                quote_plus(str(partNumber))
             response = requests.get(url)
             series_re = re.search(r'Series=(.+?)(,| /)', response.text)
-            print("---------hello world------------", response)
             if series_re:
                 series = series_re.group(1)
             else:
                 series = partNumber
-
+            print(response.text)
             soup = BeautifulSoup(response.text, 'lxml')
             status_icons = soup.find('ul', class_='detail-status-icon')
             for icon in status_icons.find_all('li'):
@@ -186,32 +188,26 @@ class Scrapper(Mouser):
                 ['Data Sheet', 'Specifications Sheet'], 'Details')
             rohs_url = search_doc_link(['RoHS'], 'Related Links')
             reach_url = search_doc_link(['REACH'], 'Related Links')
-
             for pdf_list_url in {rohs_url, reach_url}:
                 response_pdflist = requests.get(pdf_list_url)
                 soup_pdf = BeautifulSoup(response_pdflist.text, 'lxml')
-
-            rohs, reach = (None, None)
-
-            for table in soup_pdf.find_all('table', class_="m-table_table"):
-                links_pdf = []
+                rohs, reach = (None, None)
+                for table in soup_pdf.find_all('table', class_="m-table_table"):
+                    links_pdf = []
                 for tbody in table.find_all('tbody'):
                     for tr in table.find_all('tr'):
                         tds = tr.find_all('td')
-                        if tds:
-                            series_pdf = tds[0].text.split()[0].rstrip('*')
-                            links_pdf.append(
-                                (series_pdf, tds[1].find('a').attrs['href']))
-                            links_pdf = sorted(
-                                links_pdf, key=lambda x: -len(x[0]))
-
+                    if tds:
+                        series_pdf = tds[0].text.split()[0].rstrip('*')
+                        links_pdf.append(
+                            (series_pdf, tds[1].find('a').attrs['href']))
+                links_pdf = sorted(links_pdf, key=lambda x: -len(x[0]))
                 for sr_pdf, pdf_link in links_pdf:
                     if sr_pdf in series:
                         if '-rohs-' in tds[1].find('a').attrs['href'] and rohs is None:
                             rohs = 'https://www.murata.com' + pdf_link
-                        elif '-reach-' in tds[1].find('a').attrs['href'] and reach is None:
-                            reach = 'https://www.murata.com' + pdf_link
-
+                    elif '-reach-' in tds[1].find('a').attrs['href'] and reach is None:
+                        reach = 'https://www.murata.com' + pdf_link
             result = {
                 'Results': 'Found',
                 'status': status,
@@ -221,22 +217,21 @@ class Scrapper(Mouser):
                 'RoHS': rohs,
                 'REACH': reach
             }
-
         except Exception as e:
-            print('part number is not found on server')
+            print(e)
             return {"status": 404}
-
         return result
 
     def scrap_festo(self, partnumber):
         # print(partnumber)
-        HEADERS = {'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'}
+        HEADERS = {
+            'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'}
         url = "https://www.festo.com/ca/en/search/autocomplete/SearchBoxComponent?term=" + \
             str(partnumber)
 
         try:
             # request part information from Festo server
-            res = requests.request("GET", url,headers=HEADERS)
+            res = requests.request("GET", url, headers=HEADERS)
         except:
             return {"status": 404}
 
@@ -412,16 +407,16 @@ class Scrapper(Mouser):
                 response = requests.request(
                     "POST", url, timeout=9000000, headers=headers, data=payload)
             except Exception as f:
-             return {"status": 404}        
+                return {"status": 404}
             try:
-               report_response = requests.request(
-                "POST", reporturl, headers=headers, timeout=9000000, data=payload)
+                report_response = requests.request(
+                    "POST", reporturl, headers=headers, timeout=9000000, data=payload)
             except Exception as g:
-             return {"status": 404}
-                 
+                return {"status": 404}
+
             link = "https://www.phoenixcontact.com/customer/api/v1/product-compliance/report/guid/" + \
                 report_response.text + "?_locale=en-US&_realm=us"
-            if(response):
+            if (response):
                 res = response.json()
             else:
                 return {"status": 404}
@@ -511,6 +506,257 @@ class Scrapper(Mouser):
             print(e)
             return {"status": 404}
 
+    def scrap_fair_rite(self, partNumber):
+        try:
+            q_resp = requests.get(
+                'https://www.fair-rite.com/?s=' + str(partNumber))
+            qsoup = BeautifulSoup(q_resp.text, 'lxml')
+            h1s = qsoup.find_all('h1', class_='entry-title')
+            for h1 in h1s:
+                if str(partNumber).lower() in h1.find('a').attrs['href'].lower():
+                    url = h1.find('a').attrs['href']
+                    break
+
+            response = requests.get(url)
+            soup = BeautifulSoup(response.text, 'lxml')
+
+            dslink = soup.find(
+                'a', attrs={'href': re.compile(r'.+?product_datasheet.*')})
+            sdslink = soup.find('img', attrs={'alt': 'msds'}).parent
+            result = {
+                "partNumber": re.search(r'Part Number: (.+)', soup.find('div', class_="pdata").text).group(1),
+                "Results": 'found',
+                "partName": soup.find('h2', class_="tl_heading").text,
+                "DataSheet link": ('https://www.fair-rite.com' + dslink.attrs['href']) if dslink else None,
+                "RoHS Material Declaration": soup.find('img', attrs={'src': re.compile(r'.+?rohs_mat\.png')}).parent.attrs['href'],
+                "RoHS Certificate of Compliance": soup.find('img', attrs={'src': re.compile(r'.+?rohs_comp\.png')}).parent.attrs['href'],
+                "Safety Data Sheet": ('https://www.fair-rite.com' + sdslink.attrs['href']) if sdslink else None
+            }
+        except (IndexError, AttributeError):
+            print('part number is not found on server')
+            return {"status": 404}
+
+        return result
+
+    def scrap_tdk(self, partNumber):
+        try:
+            url = 'https://product.tdk.com/pdc_api/en/search/list/search_result/?part_no='
+            print(url + str(partNumber) + '&_l=20&_p=1&_c=part_no-part_no&_d=0')
+            response = requests.post(url + str(partNumber) + '&_l=20&_p=1&_c=part_no-part_no&_d=0',
+            headers={
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+            },)
+            soup = BeautifulSoup(response.json()['results'], 'lxml')
+
+            table = soup.find('table', id="table_result")  
+            print("table:",table)          
+            tr = table.find('tbody').find_all('tr')[0]
+            print("tr",tr)
+            if "Part No." in tr:
+                print("Substring found!") 
+                part_detail = tr.find('td', {'data-label': "Part No."})
+                print("part_detail",part_detail)
+                part_no = part_detail.find('a').text
+                result = {
+                    'Results': 'Found',
+                    'status': part_detail.find('img').attrs['title'],
+                    'partNumber': part_no,
+                    'partName': part_no,
+                    'dataSheet': 'https://product.tdk.com' + tr.find('td', {'data-label': "Catalog / Data Sheet"}).find('a').attrs['href'],
+                    'brand': tr.find('td', {'data-label': "Brand"}).text.strip()
+                }
+                return result             
+            else:
+                print("Substring not found!")
+                return {"status": 404}       
+            
+        except IndexError:
+            print('part number is not found on server')
+            return {"status": 404}
+
+        return result
+
+    def scrap_allegro(self, partNumber):
+        try:
+            number_code = re.search(r'[A-Z]+(\d+)', partNumber).group(1)
+            search_response = requests.get(
+                'https://allegromicro.com/all-api/search?q=' + number_code)
+            print("===========in", search_response.json())
+            for result in search_response.json().get('Items'):
+                if result.get('url'):
+                    product_response = requests.get(result.get('url'))
+
+                    products_soup = BeautifulSoup(
+                        product_response.text, 'lxml')
+
+                    item_list = list()
+                    dsheets = ['https://allegromicro.com' + x.parent.attrs['href']
+                               for x in products_soup.find_all('i', class_="fa fa-file-pdf-o")]
+                    certs = ['https://allegromicro.com' + x.attrs.get('href', '') for x in products_soup.find_all(
+                        "a", {'href': re.compile(".+certificates-of-compliance.+")})]
+
+                    table = products_soup.find(
+                        'div', class_="table-scroll div2")
+                    headers = table.find('thead').find_all('th')
+                    table_header = list()
+                    for th in headers:
+                        table_header.append(th.text.strip())
+
+                    for row in table.find_all('tr'):
+
+                        item = {}
+                        for n, td in enumerate(row.find_all('td')):
+
+                            if table_header[n] == 'Part Number':
+                                item['PartNumber'] = td.text
+                            elif table_header[n] == 'Part Composition /RoHS Data':
+                                item['RoHSData'] = (
+                                    'https://allegromicro.com' + td.find('a').attrs.get('href')) if td.find('a') else None
+                            elif table_header[n] == 'RoHSCompliant':
+                                item['RoHSCompliant'] = td.text
+                            elif table_header[n] == 'Package Type':
+                                item['partName'] = td.text
+
+                    if item:
+                        item["Results"] = "Found"
+                        item['DataSheets'] = dsheets
+                        item['CertificateOfCompliance'] = certs
+                        item_list.append(item)
+                        if item['PartNumber'].lower() == partNumber.lower():
+                            return item
+        except (IndexError, AttributeError, requests.exceptions.MissingSchema):
+            print('part number is not found on server')
+            return {"status": 404}
+
+    def scrap_microchip(self, partNumber):
+        try:
+            url = 'https://www.microchip.com/sitesearch/api/autosuggestapi/GetAutoSuggest?q=' + \
+                str(partNumber)
+            response = requests.get(url)
+            url_product = 'https://www.microchip.com/en-us/product/' + \
+                response.text.strip('"\\r\\n')
+
+            response_product = requests.get(url_product)
+
+            soup = BeautifulSoup(response_product.text, 'lxml')
+
+            dsheet = None
+            docs = soup.find_all('a', class_="mchp-button red")
+            for doc in docs:
+                if doc.find('span').text == 'Download Data Sheet':
+                    dsheet = doc.attrs['href']
+                break
+
+            status_re = re.search(r'Status: (.+?)\.', ' '.join(
+                soup.find('div', 'dcf-product-status-container').find('div').text.split()))
+            if status_re:
+                status = status_re.group(1)
+            else:
+                status = None
+
+            rohs_page_link = soup.find(
+                'div', class_="rohs-editable-text").find('a').attrs['href']
+            rohs_response = requests.get(rohs_page_link)
+
+            soup_rohs = BeautifulSoup(rohs_response.text, 'lxml')
+            rohs_table = soup_rohs.find('table', class_='ROHSTable--table')
+
+            header = [th.text.strip() for th in rohs_table.find(
+                'thead').find('tr').find_all('th')]
+            rohs_certificate, rohs_status = (None, None)
+            for row in rohs_table.find('tbody').find_all('tr'):
+                tds = row.find_all('td')
+                index_product = header.index('Product')
+                if tds[index_product].text.strip() == partNumber:
+                    rohs_status_index = header.index('ROHS')
+                    rohs_status = 'Compliant' if 'rohs-check' in tds[rohs_status_index].find(
+                        'div').attrs['class'] else None
+                    rohs_certificate_index = header.index('RoHS Certificate')
+                    rohs_certificate = tds[rohs_certificate_index].find(
+                        'div').find('a').attrs['href']
+                break
+
+            result = {
+                'Results': 'Found',
+                'status': status,
+                'partNumber': partNumber,
+                'partName': soup.find('h1').text.strip(),
+                'DataSheet': dsheet,
+                'RohsStatus': rohs_status,
+                'RohsCertificate': rohs_certificate
+            }
+        except (IndexError, AttributeError):
+            print('part number is not found on server')
+            return {"status": 404}
+        return result
+
+    def scrap_leespring(self, partNumber):
+        try:
+            payload = {
+                'perpage': 20,
+                'fLen_max': 10000000,
+                'field_published_stock_code_value': partNumber
+            }
+            resp = requests.post(
+                'https://www.leespring.com/compression-springs.php', data=payload)
+            print(resp.json(), "----------- inresp s")
+            for elem in resp.json().get('rdata', []):
+                resp_new = requests.get(
+                    'https://www.leespring.com/compression-specific-new/' + str(elem.get('entity_id')))
+                soup = BeautifulSoup(resp_new.text, 'lxml')
+                partNumber_site = soup.find(
+                    'span', class_="field-content part-number-specific-product").text
+                item = {
+                    'Results': 'Found',
+                    'partNumber': partNumber_site,
+                    'partName': soup.find('span', class_=re.compile(r".*compression-outside-diameter-in-series.*")).text,
+                    'SpecSheet': resp_new.url
+                }
+                return item
+        except (IndexError, AttributeError, requests.exceptions.MissingSchema):
+            print('part number is not found on server')
+            return {"status": 404}
+
+    def scrap_yageo(self, partNumber):
+        try:
+            headers = {
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+                'accept-encoding': 'gzip, deflate, br',
+                'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
+                'cache-control': 'max-age=0',
+                'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': "macOS",
+                'sec-fetch-dest': 'document',
+                'sec-fetch-mode': 'navigate',
+                'sec-fetch-site': 'none',
+                'sec-fetch-user': '?1',
+                'upgrade-insecure-requests': '1',
+            }
+            resp = requests.get(
+                'https://www.yageo.com/en/ProductSearch/PartNumberSearch?part_number=' + str(partNumber), headers=headers)
+            soup = BeautifulSoup(resp.text, 'lxml')
+
+            table = soup.find('table', class_="destory_table item_sort_table")
+            for tr in table.find('tbody').find_all('tr'):
+                partNumber_site = ' '.join(tr.find(
+                    'td', {'data-title': re.compile(r"[pP]art ?Number")}).text.split()).split()[0]
+
+                if partNumber_site.lower().replace(' ', '') == str(partNumber).lower().replace(' ', ''):
+                    pdescr = tr.find(
+                        'td', {'data-title': "Packing Description"})
+
+                    item = {
+                        'Results': 'Found',
+                        'partNumber': partNumber_site,
+                        'packingDescription': pdescr.text.strip() if pdescr else None,
+                        'SpecSheet': 'https://www.yageo.com' + tr.find('td', {'data-title': re.compile(r".*[Dd]atasheet.*|Doc\.")}).find('a').attrs['href'],
+                    }
+                    return item
+        except (IndexError, AttributeError, requests.exceptions.MissingSchema):
+            print('part number is not found on server')
+            return {"status": 404}
+
     def scrap_Wago(self, partnumber):
         headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36'
@@ -572,6 +818,135 @@ class Scrapper(Mouser):
         except Exception as e:
             print(e)
             return {"status": 404}
+
+    def scrap_vishay(self, partNumber):
+        """
+        Scrape information from the Vishay website for a given part number.
+
+        Args:
+            partNumber (str): The part number to search for.
+
+        Returns:
+            dict or None: A dictionary containing information about the part, or None if the part was not found.
+        """
+
+        try:
+            # Construct the search query URL for the given part number
+            search_url = 'https://www.vishay.com/search/?searchChoice=part&query=' + partNumber
+
+            # Send a GET request to the search URL and parse the response with BeautifulSoup
+            search_response = requests.get(search_url)
+            soup = BeautifulSoup(search_response.text, 'html.parser')
+
+            # Find all product links in the search results
+            links = soup.select('.Table_listTable__2PExR td:nth-of-type(1) a')
+
+            # Iterate over the product links and scrape information from each page
+            for link in links:
+                # Construct the URL for the product page
+                link_url = "https://www.vishay.com/" + link['href']
+
+                # Send a GET request to the product page and parse the response with BeautifulSoup
+                product_response = requests.get(link_url)
+                product_soup = BeautifulSoup(product_response.text, 'lxml')
+
+                # Extract the part name and datasheet link from the product page
+                partName = product_soup.find('h1').text
+                datasheet = product_soup.find(
+                    'td', text='Datasheet').find_next_sibling('td').find('a')['href']
+                datasheet_link = "https://www.vishay.com/" + datasheet
+
+                # Extract the sub-title from the product page
+                sub_title = product_soup.find('div', class_='ppgHead').text
+
+                # Send a GET request to the quality information tab and parse the response with BeautifulSoup
+                quality_tab = requests.get(link_url + "/tab/quality/")
+                quality_soup = BeautifulSoup(quality_tab.text, 'lxml')
+
+                # Extract the quality information from the tab
+                table = quality_soup.find(
+                    'table', class_='Table_listTable__2PExR')
+                headers = table.find_all('th')
+                headers = [header.text.strip() for header in headers]
+                rows = table.find_all('tr')[1:]
+
+                items = list()
+                for row in rows:
+                    # Create a dictionary to store the quality information for a single part
+                    item = {}
+
+                    for index, td in enumerate(row.find_all('td')):
+                        # Extract the quality information and store it in the dictionary
+                        if headers[index] == 'Part Number':
+                            item["PartNumber"] = td.text
+                        elif headers[index] == 'RoHS-Compliant':
+                            item["RoHSCompliant"] = td.text
+                        elif headers[index] == 'Lead (Pb)-Free':
+                            item["leadFree"] = td.text
+
+                    # If the dictionary is not empty, add the part name, datasheet link, and dictionary to the list of items
+                    if item != {}:
+                        item["Results"] = 'Found'
+                        item["PartName"] = partName
+                        item["Datasheet"] = datasheet_link
+                        items.append(item)
+                        print(items)
+                        # If the part number matches the one provided by the user, return the dictionary
+                        print("-------in service ---------", item)
+                        return item
+        except (IndexError, AttributeError, requests.exceptions.MissingSchema):
+            print('part number is not found on server')
+            return {"status": 404}
+
+    def scrap_alliedelectronics(self, partNumber):
+        headers = {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+        }
+
+        url = 'https://www.alliedelectronics.com/mm5/json.mvc?Store_Code=Allied04&Function=Module&Module_Code=cmp-cssui-searchfield&Module_Function=Search'
+
+        data = {'Search': partNumber, 'Count': 5, 'Session_Type': 'runtime'}
+        try:
+            response = requests.post(url, headers=headers, data=data)
+            json_data = response.json()
+            if json_data:
+                result_url = json_data.get('data', [])[0].get('product_link')
+                prod_resp = requests.get(result_url, headers=headers)
+
+            soup = BeautifulSoup(prod_resp.text, 'lxml')
+
+            spec_a = soup.find('a', text='Product Specifications')
+            result = {
+                "Results": "Found",
+                'partNumber': soup.find('span', class_='part-no').text,
+                'partName': soup.find('h1', class_='normal nm').text,
+                'productSpecifications': spec_a.attrs['href'] if spec_a else None
+            }
+            return result
+        except IndexError:
+            print('part number is not found on server')
+            return {"status": 404}
+
+    def scrap_rshughes(self, partNumber):
+
+        # driver = webdriver.Chrome(options=options, service=Service)
+        # driver.get("https://www.rshughes.com/search.html?q=" + partNumber)
+        # # wait for the H1 WITH class called h2 to load
+        # WebDriverWait(driver, 10).until(
+        #     EC.presence_of_element_located((By.CLASS_NAME, "h2")))
+        # # get the H1 element
+        # part_name = driver.find_element(By.XPATH, "//h1[@class='h2']").text
+        # part_number = driver.find_element(
+        #     By.XPATH, "//h2[contains(@class,'text-gray')]").text
+        # brand = driver.find_element(
+        #     By.XPATH, "//li[./div[1]/span[contains(text(),'Brand')]]/div[2]").text
+        # item = {
+        #     "Results": "Found",
+        #     'partNumber': part_number,
+        #     'partName': part_name,
+        #     'Brand': brand
+        # }
+        return
 
     def scrap_Arrow(self, partnumber):
         headers = {
