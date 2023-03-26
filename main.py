@@ -143,6 +143,8 @@ def read_item(part_number):
 
 @app.get("/scrap_ti/{part_number}")
 def read_item(part_number):
+    part_number = part_number.replace('qr', '/')
+    print(part_number)
     return scrapper.scrap_ti(part_number)
 
 
@@ -187,14 +189,45 @@ async def read_item(body: BodyParam):
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
+    print("scrap_fair_rite====",scrapper.scrap_fair_rite)
     for part in body.parts:
         future = executor.submit(scrapper.scrap_fair_rite, (part))
+        print("future", future)
         futures.append(future)
 
     for future in futures:
         myList.append(future.result())
     return myList
 
+@app.get('/scrap_panduit/{part_number}')
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrap_panduit(part_number)
+
+@app.get('/scrap_alphawire/{part_number}')
+def read_item(part_number):
+    return scrapper.scrap_alphawire(part_number)
+
+@app.post("/scrap_alphawire_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    
+    for part in body.parts:
+        print("part:", part)
+        future = executor.submit(scrapper.scrap_alphawire, (part))
+        print("future", future)
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+@app.get('/scrap_analog/{part_number}')
+def read_item(part_number):
+    return scrapper.scrap_analog(part_number)
 
 @app.get("/scrap_tdk/{part_number}")
 def read_item(part_number):
@@ -207,8 +240,10 @@ def read_item(body: BodyParam):
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
+    
     for part in body.parts:
         future = executor.submit(scrapper.scrap_tdk, (part))
+        print("future", future)
         futures.append(future)
 
     for future in futures:
@@ -219,7 +254,6 @@ def read_item(body: BodyParam):
 @app.get("/scrap_microchip/{part_number}")
 def read_item(part_number):
     return scrapper.scrap_microchip(part_number)
-
 
 @app.post("/scrap_microchip_list")
 def read_item(body: BodyParam):
