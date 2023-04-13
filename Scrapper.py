@@ -15,12 +15,13 @@ import time
 options = webdriver.ChromeOptions()
 options.add_argument('--headless')
 
+
 class Scrapper(Mouser):
 
     def scrap_newark(self, partNumber):
         headers = {
             # 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-             'User-Agent' : 'MyAppName/1.0'
+            'User-Agent': 'MyAppName/1.0'
         }
         try:
             url = 'https://www.newark.com/webapp/wcs/stores/servlet/AjaxSearchLookAhead?storeId=10194&catalogId=15003&langId=-1&searchTerm='
@@ -129,16 +130,17 @@ class Scrapper(Mouser):
         return result
 
     def scrap_ti(self, partnumber):
-        print("oldPartnumber",partnumber)
+        print("oldPartnumber", partnumber)
         if str(partnumber).find('&45F') != -1:
             print("replace")
-            partnumber = str(partnumber).replace('&45F','/')
-            url = 'https://www.ti.com/product/LM741QML/part-details/' + str(partnumber)
-        else: 
+            partnumber = str(partnumber).replace('&45F', '/')
+            url = 'https://www.ti.com/product/LM741QML/part-details/' + \
+                str(partnumber)
+        else:
             url = 'https://www.ti.com/product/' + str(partnumber)
-        print("newPartnumber",partnumber)
+        print("newPartnumber", partnumber)
         # url = 'https://www.ti.com/product/LM741QML/part-details/' + str(partnumber)
-        print("url = ",url)
+        print("url = ", url)
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'lxml')
         datasheet = soup.find('a', navtitle="data sheet") or ''
@@ -562,7 +564,7 @@ class Scrapper(Mouser):
             print('part number is not found on server')
             return {"status": 404}
 
-        print("result=====",result)
+        print("result=====", result)
 
         return result
 
@@ -581,9 +583,9 @@ class Scrapper(Mouser):
                 href = link.get_attribute('href')
                 if str(href).find(str(partNumber)) != -1:
                     product_link = href
-                    break                
+                    break
             print("productLink:", product_link)
-            if product_link != "" :
+            if product_link != "":
                 driver.quit()
                 scrap_driver = webdriver.Chrome(options=options)
                 scrap_driver.get(product_link)
@@ -592,19 +594,22 @@ class Scrapper(Mouser):
                 print("Code wakes up")
                 product_name = scrap_driver.find_element(By.XPATH, '//h1')
                 product_number = scrap_driver.find_element(By.XPATH, '//h3')
-                table = scrap_driver.find_element(By.XPATH,"//table[@class='table table-resources table-sm']")
-                Specification_Sheet = table.find_element(By.XPATH,"//td[@class='resource-desc border-block-resouces align-middle']")
-                Specification_Sheet_link = Specification_Sheet.find_element(By.TAG_NAME,'a')
-    
-                print("td:",Specification_Sheet.get_attribute('href'))
-                print("product_name:",product_name.text)
-                print("product_number:",product_number.text)
+                table = scrap_driver.find_element(
+                    By.XPATH, "//table[@class='table table-resources table-sm']")
+                Specification_Sheet = table.find_element(
+                    By.XPATH, "//td[@class='resource-desc border-block-resouces align-middle']")
+                Specification_Sheet_link = Specification_Sheet.find_element(
+                    By.TAG_NAME, 'a')
+
+                print("td:", Specification_Sheet.get_attribute('href'))
+                print("product_name:", product_name.text)
+                print("product_number:", product_number.text)
                 result = {
-                        'Results': 'Found',                    
-                        'Part Number': product_number.text,
-                        'Part Name' : product_name.text,
-                        'Specification Sheet' : Specification_Sheet_link.get_attribute('href')
-                    }
+                    'Results': 'Found',
+                    'Part Number': product_number.text,
+                    'Part Name': product_name.text,
+                    'Specification Sheet': Specification_Sheet_link.get_attribute('href')
+                }
                 scrap_driver.quit()
             else:
                 print('part number is not found on server')
@@ -616,16 +621,18 @@ class Scrapper(Mouser):
 
     def scrap_analog(self, partNumber):
         try:
-            url = 'https://www.analog.com/en/products/' + str(partNumber) + '.html'
+            url = 'https://www.analog.com/en/products/' + \
+                str(partNumber) + '.html'
             driver = webdriver.Chrome(options=options)
             driver.get(url)
-            product_name_div = driver.find_element(By.XPATH,"//div[@class='adi-pdp__product__description']")
-            if product_name_div :
+            product_name_div = driver.find_element(
+                By.XPATH, "//div[@class='adi-pdp__product__description']")
+            if product_name_div:
                 texts = product_name_div.text.split("\n")
                 result = {
-                    'Results': 'Found', 
-                    'Part Number': str(partNumber), 
-                    'Part Name' : texts[0],
+                    'Results': 'Found',
+                    'Part Number': str(partNumber),
+                    'Part Name': texts[0],
                     'RoHS status': 'Yes'
                 }
         except requests.exceptions.HTTPError as error:
@@ -635,30 +642,34 @@ class Scrapper(Mouser):
             print('part number is not found on server')
             return {"status": 404}
         return result
-    
+
     def scrap_alphawire(self, partNumber):
         try:
-            partNumber = str(partNumber).replace('&45F','/')
+            partNumber = str(partNumber).replace('&45F', '/')
             print(partNumber)
-            url = 'https://www.alphawire.com/rohssearch/GetRohsPartNumbers?partnumber=' + str(partNumber)
+            url = 'https://www.alphawire.com/rohssearch/GetRohsPartNumbers?partnumber=' + \
+                str(partNumber)
             print("url=", url)
-            response  = requests.get(url)
+            response = requests.get(url)
             # return response.json()
             if len(response.json()) != 0:
-                partNumberUrl = 'https://www.alphawire.com/' + response.json()[0]['PartNumberUrl']
+                partNumberUrl = 'https://www.alphawire.com/' + \
+                    response.json()[0]['PartNumberUrl']
                 print(partNumberUrl)
                 # return partNumberUrl
                 driver = webdriver.Chrome(options=options)
                 driver.get(partNumberUrl)
-                product_name = driver.find_element(By.XPATH,'//h1')
-                product_description = driver.find_element(By.NAME,'description')
-                print("product_name:",product_name.text)
-                print("product_description:",product_description.get_attribute('content'))
+                product_name = driver.find_element(By.XPATH, '//h1')
+                product_description = driver.find_element(
+                    By.NAME, 'description')
+                print("product_name:", product_name.text)
+                print("product_description:",
+                      product_description.get_attribute('content'))
                 result = {
-                    'Results': 'Found',      
+                    'Results': 'Found',
                     'Part Number': str(partNumber),
                     'Part Name': product_name.text,
-                    'RoHS Status' : 'Yes',
+                    'RoHS Status': 'Yes',
                     'Description': product_description.get_attribute('content')
                 }
             else:
@@ -668,24 +679,25 @@ class Scrapper(Mouser):
             print('part number is not found on server')
             return {"status": 404}
         return result
+
     def scrap_tdk(self, partNumber):
         try:
             url = 'https://product.tdk.com/pdc_api/en/search/list/search_result/?part_no='
             print(url + str(partNumber) + '&_l=20&_p=1&_c=part_no-part_no&_d=0')
             response = requests.post(url + str(partNumber) + '&_l=20&_p=1&_c=part_no-part_no&_d=0',
-            headers={
+                                     headers={
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
             },)
             soup = BeautifulSoup(response.json()['results'], 'lxml')
 
-            table = soup.find('table', id="table_result")  
-            print("table:",table)          
+            table = soup.find('table', id="table_result")
+            print("table:", table)
             tr = table.find('tbody').find_all('tr')[0]
-            print("tr",tr)
+            print("tr", tr)
             if "Part No." in tr:
-                print("Substring found!") 
+                print("Substring found!")
                 part_detail = tr.find('td', {'data-label': "Part No."})
-                print("part_detail",part_detail)
+                print("part_detail", part_detail)
                 part_no = part_detail.find('a').text
                 result = {
                     'Results': 'Found',
@@ -695,11 +707,11 @@ class Scrapper(Mouser):
                     'dataSheet': 'https://product.tdk.com' + tr.find('td', {'data-label': "Catalog / Data Sheet"}).find('a').attrs['href'],
                     'brand': tr.find('td', {'data-label': "Brand"}).text.strip()
                 }
-                return result             
+                return result
             else:
                 print("Substring not found!")
-                return {"status": 404}       
-            
+                return {"status": 404}
+
         except IndexError:
             print('part number is not found on server')
             return {"status": 404}
@@ -1256,6 +1268,159 @@ class Scrapper(Mouser):
         print(scrapped_data)
         return scrapped_data
 
+    # ***************************************  scrap_pemnet data from csv.  ***********************************************
+
+    def scrap_pemnet(self, partnumber):
+        url = 'https://www.pemnet.com/products/product-finder/'+partnumber
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'lxml')
+        print(soup)
+        result = {}
+        try:
+            result = {
+                "Results": "Found",
+                'Part Number': partnumber,
+                'Category': soup.find(string="Product Category").find_next("dd").get_text(strip=True),
+                'Datsheet(pdf)': soup.find("div", class_="wp-block-button product__button product__sheets").find_next("a")["href"]
+            }
+            print(result)
+        except AttributeError:
+            print('part number is not found on server.')
+            return {'status': 404}
+        return result
+    # ***************************************  scrap_yuden data from csv.  ***********************************************
+
+    def scrap_yuden(self, partnumber):
+        url = 'https://ds.yuden.co.jp/TYCOMPAS/or/detail?pn='+partnumber+'&u=M'
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'lxml')
+        result = {}
+        try:
+            result = {
+                "Results": "Found",
+                'Part Number': partnumber,
+                'Cateogry': soup.find(id="ClassificationSeriesArea").get_text(strip=True),
+                'Status': soup.find(string="Status").find_next('td').get_text(strip=True),
+                'RoHS': soup.find(string="RoHS Compliance (10 subst.)").find_next('td').get_text(strip=True),
+                'REACH': soup.find(string="REACH Compliance (233 subst.)").find_next('td').get_text(strip=True),
+            }
+        except AttributeError:
+            print('part number is not found on server.')
+            return {'status': 404}
+
+        return result
+    # ***************************************  scrap_semtech data from csv.  ***********************************************
+
+    def scrap_semtech(self, partnumber):
+        url = 'https://www.semtech.com/quality/search-pb-lead-free-rohs-green?prodNumbers='+partnumber
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'lxml')
+        result = {}
+        try:
+            result = {
+                "Results": "Found",
+                'Part Number': partnumber,
+                'Part Description': soup.find(string='Part Description').find_next('span').get_text(strip=True),
+                'REACH SVH C(224) EC1907/2006': soup.find(string='REACH SVH C(224) EC1907/2006 ').find_next('span').get_text(strip=True).replace("Download Report", ""),
+                'REACH PDF URL': soup.find(string='REACH SVH C(224) EC1907/2006 ').find_next('span').find_next('a')['href'],
+                'RoHS 2/3 Amend 2015/863': soup.find(string='RoHS 2/3 Amend 2015/863 ').find_next('span').get_text(strip=True).replace("Download Report", ""),
+                'RoHS 2/3 Amend 2015/863 PDF URL': soup.find(string='RoHS 2/3 Amend 2015/863 ').find_next('span').find_next('a')['href'],
+                'Halogen Free / Low IEC 61249-2-21/JS709C': soup.find(string='Halogen Free / Low IEC 61249-2-21/JS709C ').find_next('span').get_text(strip=True).replace("Download Report", ""),
+                'RoHS Compliant by Exception': soup.find(string='RoHS Compliant by Exception ').find_next('span').get_text(strip=True)
+            }
+        except AttributeError:
+            print('part number is not found on server.')
+            return {'status': 404}
+
+        return result
+    # ***************************************  scrap_radiall data from csv.  ***********************************************
+
+    def scrap_radiall(self, partnumber):
+        url1 = 'https://www.radiall.com/catalogsearch/advanced/result/?sku='+partnumber
+        url2 = 'https://www.radiall.com/rohs?part_number='+partnumber
+        url3 = 'https://www.radiall.com/short-size-gps-l1-active-sma-'+partnumber+'.html'
+        response1 = requests.get(url1)
+        response2 = requests.get(url2)
+        response3 = requests.get(url3)
+        soup1 = BeautifulSoup(response1.text, 'lxml')
+        soup2 = BeautifulSoup(response2.text, 'lxml')
+        soup3 = BeautifulSoup(response3.text, 'lxml')
+        result = {}
+        result['Part Number'] = partnumber
+        try:
+            result['Part Name'] = soup1.find(
+                string=partnumber).find_next('td').get_text(strip=True)
+            result['Results'] = 'Found'
+        except AttributeError:
+            result['Part Name'] = '404 Not Found'
+        try:
+            result['RoHS directive 2011/65EU & 2015/863EU (Exemption used)'] = soup2.find(
+                'td').find_next('td').get_text(strip=True)
+        except AttributeError:
+            result['RoHS directive 2011/65EU & 2015/863EU (Exemption used)'] = '404 Not Found'
+        try:
+            result['Non RoHS substance'] = soup2.find('td').find_next(
+                'td').find_next('td').get_text(strip=True)
+        except AttributeError:
+            result['Non RoHS substance'] = '404 Not Found'
+        try:
+            result['Presence SVHC > 0.1% w/W'] = soup2.find('td').find_next(
+                'td').find_next('td').find_next('td').get_text(strip=True)
+        except AttributeError:
+            result['Presence SVHC > 0.1% w/W'] = '404 Not Found'
+        try:
+            result['SVHC identification'] = soup2.find('td').find_next('td').find_next(
+                'td').find_next('td').find_next('td').get_text(strip=True)
+        except AttributeError:
+            result['SVHC identification'] = '404 Not Found'
+        try:
+            result['RoHS Declaration'] = soup3.find(
+                'span', class_='rohs-icon').find_next('a')['href']
+        except AttributeError:
+            result['RoHS Declaration'] = '404 Not Found'
+        if (result['Non RoHS substance'] == ''):
+            result['Non RoHS substance'] = 'Not Available'
+        # try:
+        #   result = {
+        #       'Part Number': partnumber,
+        #       'Part Name': soup1.find(string=partnumber).find_next('td').get_text(strip=True),
+        #       'RoHS directive 2011/65EU & 2015/863EU (Exemption used)': soup2.find('td').find_next('td').get_text(strip=True),
+        #       'Non RoHS substance': soup2.find('td').find_next('td').find_next('td').get_text(strip=True),
+        #       'Presence SVHC > 0.1% w/W': soup2.find('td').find_next('td').find_next('td').find_next('td').get_text(strip=True),
+        #       'SVHC identification': soup2.find('td').find_next('td').find_next('td').find_next('td').find_next('td').get_text(strip=True),
+        #       'RoHS Declaration': soup3.find('span', class_='rohs-icon').find_next('a')['href']
+        #   }
+        #   if(result['Non RoHS substance'] == ''):
+        #     result['Non RoHS substance'] = 'Not Available'
+        # except AttributeError:
+        #   result['Error'] = '404 Not Found'
+        #   return result
+
+        return result
+    # ***************************************  scrap_belfuse data from csv.  ***********************************************
+
+    def scrap_belfuse(self, partnumber):
+        url = 'https://www.belfuse.com/product/part-details?partn='+partnumber
+
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'lxml')
+        result = {}
+        try:
+            result = {
+                "Results": "Found",
+                'Part Number': partnumber,
+                'Part Name': soup.find('p', class_='product-details-description expander-truncate').get_text(strip=True),
+                'Category': soup.find(string="Home").find_next("a").get_text(strip=True),
+                'Datsheet(pdf)': 'https://www.belfuse.com'+soup.find('a', class_='view-datasheet-button btn btn-blue')["href"],
+                'RoHS Declaration': 'https://www.belfuse.com'+soup.find('a', class_='Bel_Fuse-Circuit_Protection-Others')["href"]
+            }
+
+        except AttributeError:
+            print('part number is not found on server.')
+            return {'status': 404}
+
+        return result
+
     # ***************************************  scrap_onsemi data from csv.  ***********************************************
     def scrap_onsemis(self, partnumbers):
         headers = {
@@ -1350,8 +1515,46 @@ class Scrapper(Mouser):
         except Exception as e:
             print(e)
             return {status: 404}
-
     # ***************************************  scrap_Rscomponents data from csv.  ***********************************************
+
+    def scrap_alphawire(self, partnumber):
+        partnumber = partnumber.replace("&45F", "/")
+        url = "https://www.alphawire.com/"
+        search_url = f"{url}//sxa/search/results"
+        ro_hs_declaration_url = f"{url}/RohsSearch/PrintRoHS?productPartNumber="
+        payload = {
+            "l": "en",
+            "s": "{4A774076-6068-460C-9CC6-A2D8E85E407F}",
+            "itemid": "{BF82F58C-EFD9-4D8B-AE3E-097DD12CF7DA}",
+            "autoFireSearch": "true",
+            'productpartnumber': f"{partnumber}",
+            "v": "{B22CD56D-AB95-4048-8AA1-5BBDF2F2D17F}",
+            "p": 10,
+            "e": 0,
+            "o": "ProductPartNumber,Ascending",
+        }
+        response = requests.get(search_url, params=payload)
+        data = response.json()
+        if not data["Results"]:
+            print('part number is not found on server')
+            return {'status': 404}
+        for product in data["Results"]:
+            soup = BeautifulSoup(product["Html"], "html.parser")
+
+            product_number = soup.find(
+                "span", class_="field-productpartnumber"
+            ).text
+            product_name = soup.find("h5").text
+            result = {
+                "Results": "Found",
+                'Part Number': product_number,
+                'Part Name': product_name,
+                'RoHS Status': 'Yes',
+                'RoHS Declaration': f"{ro_hs_declaration_url}{product_number}"
+            }
+            return result
+    # ***************************************  scrap_Rscomponents data from csv.  ***********************************************
+
     def scrap_Rscomponentss(self, partnumbers):
         try:
             url = "https://export.rsdelivers.com/productlist/search?query=" + \
