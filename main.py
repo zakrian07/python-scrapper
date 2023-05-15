@@ -231,7 +231,25 @@ def read_item(part_number):
 
 @app.get('/scrap_analog/{part_number}')
 def read_item(part_number):
+    print(part_number)
     return scrapper.scrap_analog(part_number)
+
+
+@app.post("/scrap_analog_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_analog, (part))
+        print("future", future)
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
 
 
 @app.get("/scrap_tdk/{part_number}")
@@ -336,6 +354,64 @@ def read_item(body: BodyParam):
     return myList
 
 
+@app.get("/scrape_mcmaster/{part_number}")
+def read_item(part_number):
+    return scrapper.scrape_mcmaster(part_number)
+
+
+@app.post("/scrape_mcmaster_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrape_mcmaster, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_abracon/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_abracon(part_number)
+
+
+@app.post("/scrap_abracon_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_abracon, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_panasonic/{part_number}")
+def read_item(part_number):
+    return scrapper.scrap_panasonic(part_number)
+
+
+@app.post("/scrap_panasonic_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_panasonic, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
 # @app.get("/scrap_sager/{part_number}")
 # def read_item(part_number):
 #     return scrap_sager(part_number)
@@ -511,6 +587,69 @@ async def read_item(body: BodyParam):
     futures = []
     for part in body.parts:
         future = executor.submit(scrapper.scrap_alphawire, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_tti/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrap_tti(part_number)
+
+
+@app.post("/scrap_tti_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_tti, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_infineon/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrap_infineon(part_number)
+
+
+@app.post("/scrap_infineon_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_infineon, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrape_bivar/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrape_bivar(part_number)
+
+
+@app.post("/scrape_bivar_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrape_bivar, (part))
         futures.append(future)
 
     for future in futures:

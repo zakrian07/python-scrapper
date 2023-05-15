@@ -10,6 +10,10 @@ from sites.Festo import Festo
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
+import undetected_chromedriver as uc
+from time import sleep
+from selenium.webdriver.chrome.options import Options
+
 # from distributors.rshughes import scrap_rshughes
 
 options = webdriver.ChromeOptions()
@@ -381,31 +385,43 @@ class Scrapper(Mouser):
             return {"status": 404}
 
     def scrap_Molex(self, partnumber):
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36'
-        }
-        url = "https://www.molex.com/molex/search/partSearch?query=" + \
-            urllib.parse.quote(str(partnumber), safe="") + "&pQuery="
-        r = requests.get(url, headers=headers)
-        soup = BeautifulSoup(r.text, 'lxml')
-        try:
-            partname = soup.find(
-                "div", class_="col-md-10").find("h1").text
-            status = soup.find("p", class_="info").find(
-                "span", class_="green").text
-            series = soup.find("a", class_='text-link').text
-            rohs = soup.find(
-                "div", id="tab-environmental").find_all("p")[1].text
-            reach = soup.find(
-                "div", id="tab-environmental").find_all("p")[3].text
-            halogen = soup.find(
-                "div", id="tab-environmental").find_all("p")[4].text
-            link = soup.find(
-                "div", id="tab-environmental").find_all("p")[8].find("a", href=True)
-            declaration = link['href']
-            return {"Results": "Found", "PArtname": partname, "Status": status, "Series": series, "ROHS": rohs, "REACH": reach, "HALOGEN": halogen, "Declaration": declaration}
-        except Exception as e:
+        url = "https://www.molex.com/en-us/products/part-detail/" + partnumber
 
+        payload = {}
+        headers = {
+            'authority': 'www.molex.com',
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'accept-language': 'en-US,en;q=0.9',
+            'sec-ch-ua': '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'same-origin',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36'
+        }
+
+        response = requests.request("GET", url, headers=headers, data=payload)
+        soup = BeautifulSoup(response.text, 'lxml')
+        try:
+            Results = 'Found'
+            dSPNGrabbed = soup.find(
+                class_='cmp-pdp__overview-product-info').find_all('span')[0].text.strip()
+            PartStatus = soup.find(
+                class_='cmp-pdp__overview-status').find('span').text.strip()
+            Reach = soup.find(
+                class_='cmp-pdp__compliance').find_all('dd')[-2].text.strip()
+            Rohs = soup.find(
+                class_='cmp-pdp__compliance').find_all('dd')[-1].text.strip()
+            SPNGrabbed = soup.find(
+                class_='cmp-pdp__overview-product-info').find_all('span')[0].text
+            DeclarationLink = "https://www.molex.com/molex/electrical_model/rohsCoC.jsp?data=" + \
+                urllib.parse.quote(SPNGrabbed, safe="")
+            return {"Results": Results, "dSPNGrabbed": dSPNGrabbed, "PartStatus": PartStatus, "Reach": Reach, "Rohs": Rohs, "SPNGrabbed": SPNGrabbed, DeclarationLink: DeclarationLink}
+        except Exception as e:
+            print(e)
             return {"status": 404}
 
     def scrap_Phoenix(self, partnumber):
@@ -459,6 +475,144 @@ class Scrapper(Mouser):
             print(e)
             return {"status": 404}
 
+    def scrape_bivar(self, part_number):
+        base_url = "https://www.bivar.com"
+        print(f"Scraping data for part number: {part_number}")
+        url = f"https://www.bivar.com/product/{part_number.replace(' ', '-')}"
+
+        response = requests.get(url, timeout=10)
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        try:
+            part_name = soup.find("h4").get_text(strip=True)
+            if part_name == "CHECK STOCK":
+                print(f"Part {part_number} is not found on server.")
+                return {"status": 404}
+
+            datasheet = (
+                rohs_compliance
+            ) = prop_65 = tsca_statement = emrt_statement = reach_compliance = "N/A"
+
+            if soup.find("span", string="RoHS Compliance"):
+                rohs_compliance = soup.find(
+                    "span", string="RoHS Compliance").parent["href"]
+
+            if soup.find("span", string="Prop 65 Statement"):
+                prop_65 = soup.find(
+                    "span", string="Prop 65 Statement").parent["href"]
+
+            if soup.find("span", string="TSCA Compliance"):
+                tsca_statement = soup.find(
+                    "span", string="TSCA Compliance").parent["href"]
+            if soup.find("span", string="EMRT Compliance"):
+                emrt_statement = soup.find(
+                    "span", string="EMRT Compliance").parent["href"]
+            if soup.find("span", string="REACH Compliance"):
+                reach_compliance = soup.find("span", string="REACH Compliance").parent[
+                    "href"
+                ]
+
+            if soup.find("a", {"id": "datasheet"}):
+                datasheet = soup.find("a", {"id": "datasheet"})["href"]
+
+            return {
+                "Results": "Found",
+                "Part Number": part_number,
+                "Part Name": part_name,
+                "RoHS Compliance": f"{base_url}{rohs_compliance.replace(' ', '%20')}",
+                "Prop 65 Statement": f"{base_url}{prop_65.replace(' ', '%20')}",
+                "TSCA Statement": f"{base_url}{tsca_statement.replace(' ', '%20')}",
+                "EMRT Statement": f"{base_url}{emrt_statement.replace(' ', '%20')}",
+                "REACH Compliance": f"{base_url}{reach_compliance.replace(' ', '%20')}",
+                "Datasheet": f"{base_url}{datasheet.replace(' ', '%20')}",
+            }
+        except AttributeError:
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+
+    def scrap_infineon(self, part_number):
+        options = Options()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+
+        base_url = "https://www.infineon.com/cms/en/"
+        driver = webdriver.Chrome("/usr/bin/chromedriver", options=options)
+        print(f"Scraping data for part number: {part_number}")
+        driver.implicitly_wait(2)
+        driver.get(base_url)
+        try:
+            sleep(1)
+            cookies_btn = driver.find_elements(
+                By.ID, "onetrust-accept-btn-handler")
+            if cookies_btn:
+                cookies_btn[0].click()
+
+            search_field = driver.execute_script(
+                """return document.querySelector('#offcanvas-wrapper > div > header > div.centered > main-search-input').shadowRoot.querySelector("form > span > input.mainSearchInput.typeahead.tt-input")"""
+            )
+            search_field.send_keys(part_number)
+            search_field_button = driver.execute_script(
+                """return document.querySelector('#offcanvas-wrapper > div > header > div.centered > main-search-input').shadowRoot.querySelector("form > button")"""
+            )
+            search_field_button.click()
+
+            sleep(2)
+            category_list = driver.find_elements(
+                By.XPATH, '//div[@class="stickyElement-wrapper"]//li'
+            )
+            category = category_list[-2].text
+
+            product_status = (
+                driver.find_element(
+                    By.XPATH, "//*[contains(text(), 'Product Status')]")
+                .find_element(By.XPATH, "following-sibling::td")
+                .text
+            )
+
+            datasheet = (
+                driver.find_element(
+                    By.XPATH, "//span[contains(text(), 'Download')]")
+                .find_element(By.XPATH, "..")
+                .get_attribute("href")
+            )
+
+            rohs = (
+                driver.find_element(
+                    By.XPATH, "//th[contains(text(), 'RoHS compliant')]")
+                .find_element(By.XPATH, "following-sibling::td")
+                .text
+            )
+            material_content = "N/A"
+            materail_cont_div = driver.find_elements(
+                By.XPATH, "//a[contains(text(), 'Material Content Sheet')]"
+            )
+            if materail_cont_div:
+                sheets_list_div = materail_cont_div[0].find_element(
+                    By.XPATH, "../../following-sibling::div"
+                )
+                sheets_list = sheets_list_div.find_elements(
+                    By.XPATH, ".//li/a[1]")
+
+                material_content = [a.get_attribute(
+                    "href") for a in sheets_list]
+            result = {
+                "Results": 'Found',
+                "Part Number": part_number,
+                "Category": category,
+                "Product Status": product_status,
+                "RoHS Compliant Status": rohs,
+                "Material Content Sheet": material_content,
+                "Datasheet": datasheet,
+            }
+            print(f"Data successfully scraped for part number: {part_number}")
+        except Exception as exc:
+            print(f"Part {part_number} is not found on server.", exc)
+            return {"status": 404}
+        return result
+
     def scrap_Rscomponents(self, partnumber):
         headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36'
@@ -486,16 +640,17 @@ class Scrapper(Mouser):
     def scrap_Te(self, partnumber):
         try:
             url = "https://www.te.com/commerce/alt/ValidateParts.do"
-
             payload = 'partNumber=' + partnumber
             headers = {
                 'authority': 'www.te.com',
                 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
                 'accept-language': 'en-US,en;q=0.9',
-                'cache-control': 'max-age=0',
+                'cache-control': 'no-cache',
                 'content-type': 'application/x-www-form-urlencoded',
-                'referer': 'https://www.te.com/commerce/alt/product-compliance.do',
-                'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',
+                'origin': 'https://www.te.com',
+                'pragma': 'no-cache',
+                'referer': 'https://www.te.com/commerce/alt/jsp/RoHSPartEntryPage.jsp',
+                'sec-ch-ua': '"Not_A Brand";v="99", "Google Chrome";v="109", "Chromium";v="109"',
                 'sec-ch-ua-mobile': '?1',
                 'sec-ch-ua-platform': '"Android"',
                 'sec-fetch-dest': 'document',
@@ -503,33 +658,61 @@ class Scrapper(Mouser):
                 'sec-fetch-site': 'same-origin',
                 'sec-fetch-user': '?1',
                 'upgrade-insecure-requests': '1',
-                'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Mobile Safari/537.36',
-                'Access-Control-Request-Method': '*',
-                'x-requested-with': 'XMLHttpRequest',
+                'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Mobile Safari/537.36'
             }
 
             response = requests.request(
-                "POST", url, headers=headers, timeout=200, data=payload)
+                "POST", url, headers=headers, data=payload)
             soup = BeautifulSoup(response.text, 'lxml')
-            tePartNum = soup.find('div', class_='product_description').text
+            Rohsexcemptions = ''
+            svhc = ''
+            count = 0
+            try:
+                tePartNum = soup.find(class_='product_description').text
+            except Exception:
+                pass
             status = soup.find('table').find('tbody').find('tr').find(
                 'td').find('a').find_next('a').find_next('a').text
-            rohsInfo = soup.find('table').find('tbody').find('tr').find(
-                'td').find_next('td').find('div', class_='compliance').find('a').text
-            # try:
-            rohsExcemption = soup.find('table').find('tbody').find('tr').find(
-                'td').find_next('td').find('div', class_='compliance').find('div', style='margin-top:8px;').text
+            try:
+                rohsInfo = soup.find(
+                    class_='compliance').find('a').text.strip()
+            except Exception:
+                pass
+            excempt = soup.find(class_='compliance').find_all('li')
+            for i in excempt:
+                print("-------- in main11 -----------")
+                Rohsexcemptions = Rohsexcemptions.strip() + i.text.strip()
+            currentReach = soup.find(class_='compliance').find_next(class_='compliance').find_next(
+                class_='compliance').find_next(class_='compliance').find('span').text.strip()
+            declaredReach = soup.find(class_='compliance').find_next(class_='compliance').find_next(
+                class_='compliance').find_next(class_='compliance').find('span').find_next('span').text.strip()
+            no_svhc = soup.find(class_='compliance').find_next(class_='compliance').find_next(
+                class_='compliance').find_next(class_='compliance').find('span').find_next('span').find_next('a').text.strip()
+            if no_svhc == 'Does not contain REACH SVHC':
+                nohc = no_svhc
+                print("-------- in main11 -----------")
 
-            # except Exception:
-            # pass
-            current_reach_candidate = soup.find('table').find('tbody').find('tr').find('td').find_next('td').find('div', class_='compliance').find_next(
-                'div', class_='compliance').find_next('div', class_='compliance').find_next('div', class_='compliance').find('span').text
-            current_reach_declaration = soup.find('table').find('tbody').find('tr').find('td').find_next('td').find('div', class_='compliance').find_next(
-                'div', class_='compliance').find_next('div', class_='compliance').find_next('div', class_='compliance').find('span').find_next('span').text
-            svhc = soup.find('table').find('tbody').find('tr').find('td').find_next('td').find('div', class_='compliance').find_next(
-                'div', class_='compliance').find_next('div', class_='compliance').find_next('div', class_='compliance').find('span').find_next('span').find_next('span').text
-            return {"Results": "Found", "Status": status, "TE-PartNum": tePartNum, "rohsInfo": rohsInfo,
-                    "rohs-excemption": rohsExcemption, "reach-candidate": current_reach_candidate, "rewach-declaration": current_reach_declaration, "svhc": svhc, "declaration-link": 'https://www.te.com/commerce/alt/SinglePartSearch.do?PN='+tePartNum+'&dest=stmt'}
+            else:
+                svhc1 = soup.find(class_='compliance').find_next(class_='compliance').find_next(
+                    class_='compliance').find_next(class_='compliance').find('div').find_all('span')
+                for i in svhc1:
+                    i = i.text.strip()
+                    count += 1
+                    if count > 2 and count < 6:
+                        svhc = svhc + '\n' + i
+            print("-------- in main -----------", Rohsexcemptions, rohsInfo)
+
+            print("-------- in main11 -----------")
+            return {"Results": 'Found',
+                    "status": status,
+                    "TEPartNum": tePartNum,
+                    "rohsInfo": rohsInfo,
+                    "rohsExcemption": Rohsexcemptions,
+                    "currentReachCandidate": currentReach,
+                    "reachDeclaredAgainst": declaredReach,
+                    "declarationLink": 'https://www.te.com/commerce/alt/SinglePartSearch.do?PN=' +
+                    tePartNum+'&dest=stmt'}
+
         except Exception as e:
             print(e)
             return {"status": 404}
@@ -619,29 +802,29 @@ class Scrapper(Mouser):
             return {"status": 404}
         return result
 
-    def scrap_analog(self, partNumber):
-        try:
-            url = 'https://www.analog.com/en/products/' + \
-                str(partNumber) + '.html'
-            driver = webdriver.Chrome(options=options)
-            driver.get(url)
-            product_name_div = driver.find_element(
-                By.XPATH, "//div[@class='adi-pdp__product__description']")
-            if product_name_div:
-                texts = product_name_div.text.split("\n")
-                result = {
-                    'Results': 'Found',
-                    'Part Number': str(partNumber),
-                    'Part Name': texts[0],
-                    'RoHS status': 'Yes'
-                }
-        except requests.exceptions.HTTPError as error:
-            print('part number is not found on server')
-            return {"status": 404}
-        except Exception as error:
-            print('part number is not found on server')
-            return {"status": 404}
-        return result
+    # def scrap_analog(self, partNumber):
+    #     try:
+    #         url = 'https://www.analog.com/en/products/' + \
+    #             str(partNumber) + '.html'
+    #         driver = webdriver.Chrome(options=options)
+    #         driver.get(url)
+    #         product_name_div = driver.find_element(
+    #             By.XPATH, "//div[@class='adi-pdp__product__description']")
+    #         if product_name_div:
+    #             texts = product_name_div.text.split("\n")
+    #             result = {
+    #                 'Results': 'Found',
+    #                 'Part Number': str(partNumber),
+    #                 'Part Name': texts[0],
+    #                 'RoHS status': 'Yes'
+    #             }
+    #     except requests.exceptions.HTTPError as error:
+    #         print('part number is not found on server')
+    #         return {"status": 404}
+    #     except Exception as error:
+    #         print('part number is not found on server')
+    #         return {"status": 404}
+    #     return result
 
     def scrap_alphawire(self, partNumber):
         try:
@@ -930,33 +1113,50 @@ class Scrapper(Mouser):
             return {"status": 404}
 
     def scrap_omron(self, partnumber):
+        url = "https://industrial.omron.eu/en/api/rohs_reach/search.json?q=" + partnumber
+
+        payload = {}
+        headers = {
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive',
+            # 'Cookie': 'OMR_USER_LANG=EU-en; _navigation=60ba1233651a71dfcde6938d71ca7b99db31fc7c; _session=a89A9rz00hJU%2BO6dutS9p6tpyCwXRM1fKRn%2FGvdo%2Fd69pWd39VJDqNnaDRA3w1dkxSbRi9WuDMWyzBMpCjTMeu0YsgqCvlPIJjH8jTGpYTx1p5zbXtnsS3rqqqb61YBnxNGBjvuSC5PmpNez%2BmJqNwrP5elZMJCzda6mhh39z2LjFWpQfyZ1CfjlQyaMWtECmiMw5odcy7XhIjRvdutOq6Onjn4r4zXa%2BKkgQYIiZN%2FaeS5N%2FQDstIDu6cL4HfJ3vB%2B0%2BLosmA96O0GRZZXM3XO%2FroPM5cqNRaMS5ybAD1wP2lFWCAAtvUmxQvdBsd80V8qw580V%2FBoFjdiWfKcUO2CtUjGhbUpZajnJ8LcaY3ybZuct3u2mHGCPpSOUOyoYyWnl7V9GczEBKxPGAtXP7Lajq2iD%2F5g4aAV2cyMxA%2FIBQz32oFsB8uzJlMzU%2B1hUou525uFlNDL%2BNy6ieeH9m9vGfRAFhqq%2BMihKBl4AE490jXTJG8GlSrYJayoCftOr7jPYkSixW9fVRBEgrhi6T%2BsTij62Ygig%2B5u6yl%2FrSgcnhPUOX9EGo4rx6N7mKDxnbY5KETs%2BwG9TkODS5xSKZzHKbYZqd%2B9I%2Bv4e7b47uaJIZPm9lUCONcFUd1jeGbqVlldrtzeugn16vM5lIbeJu6G12EXGH%2FhAWSs7OANXH8YLNXS737vYLweFzqyEnu7cDafWndqd8pAy8KGNNqbH4o17ADLXV5aRA6Z8WeJeWdMxFQV23BS%2BpQ0kV4B1FpfBLdNdOubspwYd61H7vxMIXmpwC2nfxb5StcvhdaQ1UT76LKI7E%2BBDsf46H1QRoYjf0HAQushBJwrbSrvZP7hM0vYHz7bHptHqPW5o3twqbHgsjmadzVQMmGl1CLA6lljLnx3OlEDdZ5cyTUiKDhmZhY4p0RAi3%2FsmT5CQPmcujNab707DuBKyG8uSlxneLj%2B5IycdsvTqGMR0%2Bdl7wZk4rR3wfVrEVZcYW4k2IfukvGm8EXCkuF8HK95NTLlGuKArZ9omwGZ7jjQfn9b7VrnS%2FOFw--YjQ2z4HbNdWusOHT--SaGSEgdgTqvHGDhdHiTbWg%3D%3D; OMR_USER_LANG=EU-en; _session=HheGtDmB2w1klX6qnDIVAOozwBsBb4NQnDMXrCZXSPFLhgp%2FSFK576ATYhw3cadtK3bMlzIZ6KbP5UcZjpwERrGGu%2FiL6jzGzaTKK5eg%2Bx1pnLKhjjf6%2B2mAfNpXpVXXndoQp8KMUY%2FFCsEUfTTt1gwrCGBRnlnDFHIRy94zFiAcnxZJekpwYyXT1Rm4KQaWwRNKn3GZhs1AsUQSNHNesGYcivk0EFq8bHfRNFqvGamuGQNiG2O73n7YVnApkp5tloN37OusGvjfGMZ0DbVACcgDaxzG1DjPnu9EZ8ryrJK71suNxVxmypajKovggVNpOtMTsxUspmr%2Bx7vt9VWcnkSg7Hv8akGTU%2FAYPPs86e7kD1jU7rerC6MZD9SCIMllLe%2B%2B6lq8oKembbK70x8UEP7TRwTlS6Xixe5uqk45Rf8K0mGlK1AXugUs65mDBIuxpn9gryAO5XwT2QvSw2Jw7zRkRl3wrVsG4eMdV8NJXNCMnn2mFwFmDi%2BmKbeEyY6A2urrXqCBUnsBNkCJYpd%2BPEyiOnIsTEE%2By4h1HjLi13VYH2mWRBky3QLgZnd%2BFS4%2FL2OGY673kkCCWi8ICAAGfQ2c8YgfOIkHd6toxJorfmZAw69aBxXFY82MstQ2ru%2FiDi0jaJ9wfSGzCsUt7%2FuqlWalZDXe%2BWDuaV54f%2B%2B%2FmRFOzEKfHU9gHRkGgoVGoXux2me7x11le2HguvT0xD8b6I6j4JaUzSUBl3lKBY11jncmMVBCC0clRzndIT6QZj2PEtLHnIJXf7ZyXopzQ2EezsfUQ6%2FFF1O8lFsYqFni1Nra16eWem%2F1b7VL4nadnMFmFmCsK7Ao2uh0OE4cR3IuEvSFGDHv%2FiIJ3gNRdQ%2BKgXqiiYxCQe8J06stMNSNnqF3LDhyF8qVSa9h3I%2BU0bggMlPnNxIoZ4KPprN848ilJ8NfoaPc2GLLp8gdBg%2FiTpNWtRVxCed66a2UgTRzsDuNHnw1JwOiC0DAS1n0HGbVsAIzELuCnXAdk6yYs6QjeogwE6emIw6L3Vf2Ct7g2Ybg6B7G--4MTp5cmEEsIKQLhz--Y8AAJrY7J16PwvhWkYNWiQ%3D%3D',
+            'If-None-Match': 'W/"db00db24f5657ad5823dbc91a3c68936"',
+            'Referer': 'https://industrial.omron.eu/en/services-support/support/environmental-product-information',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+            'sec-ch-ua': '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"'
+        }
+
+        response = requests.request("GET", url, headers=headers, data=payload)
         try:
-            url = "https://industrial.omron.eu/en/api/rohs_reach/search.json?q=" + \
-                str(partnumber) + "&page=1"
-            payload = {}
-            headers = {
-                'authority': 'industrial.omron.eu',
-                'accept': 'application/json, text/javascript, */*; q=0.01',
-                'accept-language': 'en-US,en;q=0.9',
-                # 'cookie': 'OMR_USER_LANG=EU-en; _gcl_au=1.1.1823097155.1661233578; _ga=GA1.3.1108793817.1661233578; _gid=GA1.3.1802832004.1661233578; nQ_cookieId=6a1bd137-c19e-3e85-c194-42f967dcb5dc; nQ_userVisitId=516dbf5b-534c-5333-a722-578b538d38a0; AMCVS_7FCC6D075DDD2B730A495C72%40AdobeOrg=1; AMCV_7FCC6D075DDD2B730A495C72%40AdobeOrg=-432600572%7CMCIDTS%7C19228%7CMCMID%7C51015238740838683563499486990667075736%7CMCAAMLH-1661838380%7C6%7CMCAAMB-1661838380%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1661240780s%7CNONE%7CvVersion%7C4.5.2; tracking_enabled=true; updated_bar=true; s_cc=true; ELOQUA=GUID=6255A7F231D5496BB717432E9D0FC266; _navigation=60ba1233651a71dfcde6938d71ca7b99db31fc7c; stat_track_u_id=uid%3D915270800%26f%3D5373%253A1022%26st%3D1%26sy%3D%26ls%3D1661244382%26off%3D%26noacts%3D%26dg%3D%26hs%3D1; _stat_track_s_id=_si%3D1661233584%26_sid%3D1661244382%26_inew%3D1%26_ls%3D1661244382%26_lurl%3D1785484693%26_lrfr%3D1785484693%26_la%3D1661244760%26_so%3D%26_pp%3D%26_bh%3D382%26_ane%3D%26_te%3D%26_nay%3D%26_nae%3D%26_nac%3D; s_ips=1077; s_sq=%5B%5BB%5D%5D; _session=4Mc37rGQbTiSFsNImDbzzfBBcl7%2FHA%2Bykdok08VY0UZaAJ8skC95teMB6tLb0sI0bVCgHTDiBnAZX9Jor%2BC2Xnho%2BDZbmCw%2FljXDYjr6HgTVl%2FJdvaxQT%2Fxd8nO5X5JCxq78INmknLPReBPmBA8RpxYx8X3xY3XLJnl3qStDxFO%2BDEN8I9EsmBrFbP4kA4u0j7bS%2BaI0FXnzwEVGJaTvd6dNbcR8gNwwidTmgVZCwanIt9XH6zX8ouKcwGzuVBPiSZmjiu3y5t7HHTozmFnwQtE8s2hbhoeUs0ZZoco4FK3AKNUL0sstxxZ9PXKelr6VSZjSWuir9yjknLDrstu1RD2i95ok4w2i%2Bb%2FsfDbWlmWprJlpW3IYLRl3380cupSkoyPbeRKHFL6ipi1Mwh%2BvfFJ8t77g9hFkuFcFKcrZw3qk0y2TstGcghfNYB5rKhj2vL9cA%2BKS0DkKbfyTSlqqq7cG7xlYoysXR19V7TlivLiqK%2Fyc3cXvoo7xMJVC4xKhP6qZtK5z9XuWArE8b8VGksKg6efm46Lh2SC8Bi8MsIb%2FGA9TgpItsQw%2BzZFRIeYNMh13OmuaHdNWfHzaO845hw%2B0ozKxa7VS8qY%2Fm4dTv0qKV%2BJL2SJFM2uRTpEVqKae6gMq5TL%2FGt1He9%2BnCgAOyuR8NTVTDISjrvMQM1TY5%2BfSsmRZB%2F807Ac1Cvf5%2FjOFwhEGgIznaX3onDA3h0WZc7UZDafiGRfGIEvBy1m8t%2BZbqt8dc9uTE68w3hlBQB8%2BW1iC7KmhQwb7ouRdXFIZSqMMeX5QxLrNY4JsfoQ5TpQfu%2Bup0YhI4ZZFm%2Fc0xhS76POOhiTq4NvwlhAJ%2BriJwbWWTXEp9lSbKfGiuEXksHG9w3rW%2Fc4lXA02kxBAbGFlKPGWPLr%2B1CEw8Xd4sGketj1p2lS%2F5lb9uMopYTMa5CreQwoqcM3s%2FgS757fcVb3HPBRbYHlhhc6vpVOSqEeP1uP1oPweP6FWa06nBKM8ONCbrbADxptRnOP6FYwDtLXYLrrU9cqWZCfGi8f6%2BC5vkWot--58sY8NsqHgQGAEqy--%2Bw6DkPGXRivhoeQC4nY%2FvA%3D%3D; s_tp=1814; s_ppv=industrialeu%253Aen%253Aservices-support%253Asupport%253Aenvironmental-product-information%2C59%2C59%2C1077%2C1%2C3; OMR_USER_LANG=EU-en; _session=00ggeX7geMnlgzhSKJVrc6vSmgZ%2FABN7AjFjMWql%2Bij2ceMyV2twQDMNEv8ppUZBgPUTB4AXjnRVoapzOAMR61e1%2BY3yTamB0PWMkXOwlJi6DbrQkJpeaUTPJi40wb2cdll%2FJFrKS%2FHQJ6WGnQySdW5odvgtGqUy8tXAx4UlWymkyAM8nFlKc5xOS2RMtTBavRUXv5vzaBH3NfzjmN5u39fmq0ikB0fhCZ7sNblEPf66aWidyDTlMtgF5nLQseulUFTXhXXgwubm0HmR9Ve1uSby7AqvmGiGpjgoiiPfzTiZcbRt7H0QPHA8SDZlVSIg3oriUTsMg%2Frwybdo3oetZnedOLqxhWrciS8Nx20g7FN1zttKDuaeEQTyA%2BrW85C0GflqNlx47j%2BtvjmfsIT1janrBVNDagM4aokkZW8R34StPWAy9mobfDatKZ1nfbsp29pXL4ZjdEe6WuajCirv4VaRU2a%2BCgoGkP%2ByiQh%2BCT%2FU9Vxk29aQfVqRyFJ7iFqehnIN67S89janEs0vIxziCsW8KFVLge4tdMBBfQeL6IDi%2BQkcNO6GoMOLM5fKkm0tEW3pspRWzUwLAiYqGA3yY%2FgxsuZpqDlAw9KUlNviIsQuXDifXVb4I7%2FvOWBwR%2BkXuLJJojGh0XeZadH6oXpclq576gc%2Ffq3ZO8rxafNX8cfxAtd1tD5AAZMUBkWmw9jJzCGuyToMe%2FhFB08rAUNVpPOiKCroW8mbUJKI3n%2ByekEeyAv1EAXEzbyLYJhA6NcGukl5UQAHfx9rjn648w46n9OCk5c9wrk97nAF4SLU5AAszWSa8uCfs0TSfpRs%2FQEhi0d2zSzRHZvHqw6pRK6ZNiI9qkDujl%2FbXZFZBdwIPhZFwqabd2nrBBR9U6XCi6LsdWuagX8SJb5W8ow47o0vRyEJEPSlXUuOmHEuybjMUtWGy8LiTp9Wrje7lL8vasDB1PytQb132gLCyvv4d1C%2B55CXS%2Bh8eK0biImvxhlLP66QiC%2FUlwjRqOuPwh5HRM3%2BAXvRnSzPFTbsXiqgVQDU5MbE--2k1eRLZg0nZy9lF2--bjMe8r7ZjAp%2FsNfp%2BQzrTA%3D%3D',
-                'if-none-match': 'W/"78c252489f63d35938e4b3b08d94af48"',
-                'referer': 'https://industrial.omron.eu/en/services-support/support/environmental-product-information',
-                'sec-ch-ua': '"Chromium";v="104", " Not A;Brand";v="99", "Google Chrome";v="104"',
-                'sec-ch-ua-mobile': '?1',
-                'sec-ch-ua-platform': '"Android"',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'same-origin',
-                'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Mobile Safari/537.36',
-                'x-csrf-token': 'sffvsIpH2eIPkz3qwj0Knx3QXlaKcnHsr0incPTXMqs7H0QW7RepIWyVv2qZGFz3RbCcijjDu/YKX5YeL0phFw==',
-                'x-requested-with': 'XMLHttpRequest'}
-            r = requests.request("GET", url, headers=headers, data=payload)
-            response = r.json()
-            for res in response['results']:
-                if res['description'] == str(partnumber) or res['description'] == str(partnumber).replace("-", ""):
-                    item_code = res['short_item_code']
-                    return {"Results": "Found", "GrabbedSPN": res['description'], "RoHS 2011/65/EU": res['rohs6_compliant'], "RoHS (EU)2015/863": res['rohs10_compliant'], "SVHC contained": res['reach_substances'], "rohs-link": 'https://industrial.omron.eu/en/pdf/rohs/' + str(item_code) + '.pdf?directive=10', "reach-link": 'https://industrial.omron.eu/en/pdf/reach/' + str(item_code) + '.pdf'}
-            return {"status": 404}
+            res = response.json()
+            print(res, "--------")
+            substanceQuantity = ''
+            if res['results'] == []:
+                df.loc[index, 'Results'] = 'Not Found'
+                df.to_csv(path, index=False)
+            else:
+                for r in res['results']:
+                    Results = 'Found'
+                    SPNGrabbed = r['description']
+                    rohsCompliant = r['rohs10_compliant']
+                    rohsNotCompliant = r['rohs10_not_compliant']
+                    reachSubstances = r['reach_substances']
+                    rohslink = 'https://industrial.omron.eu/en/pdf/rohs/' + \
+                        r['short_item_code']+'.pdf?directive=10'
+                    reachlink = 'https://industrial.omron.eu/en/pdf/reach/' + \
+                        r['short_item_code']+'.pdf'
+                    if r['reach_substances'] == 'Yes':
+                        substanceQuantity = str(r['svhc_1']) + ' ' + str(r['svhc_2']) + ' ' + str(r['svhc_3']) + ' ' + str(r['svhc_4']) + ' ' + str(
+                            r['svhc_5']) + ' ' + str(r['svhc_6']) + ' ' + str(r['svhc_7']) + ' ' + str(r['svhc_8']) + ' ' + str(r['svhc_9']) + ' ' + str(r['svhc_10'])
+                    return {"Results": Results, "SPNGrabbed": SPNGrabbed, "rohsCompliant": rohsCompliant, "rohsNotCompliant": rohsNotCompliant, "reachSubstances": reachSubstances, "rohslink": rohslink, "reachlink": reachlink, "substanceQuantity": substanceQuantity}
+                    # else:
+                    #     return {"status": 404}
         except Exception as e:
             print(e)
             return {"status": 404}
@@ -1268,26 +1468,6 @@ class Scrapper(Mouser):
         print(scrapped_data)
         return scrapped_data
 
-    # ***************************************  scrap_pemnet data from csv.  ***********************************************
-
-    def scrap_pemnet(self, partnumber):
-        url = 'https://www.pemnet.com/products/product-finder/'+partnumber
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'lxml')
-        print(soup)
-        result = {}
-        try:
-            result = {
-                "Results": "Found",
-                'Part Number': partnumber,
-                'Category': soup.find(string="Product Category").find_next("dd").get_text(strip=True),
-                'Datsheet(pdf)': soup.find("div", class_="wp-block-button product__button product__sheets").find_next("a")["href"]
-            }
-            print(result)
-        except AttributeError:
-            print('part number is not found on server.')
-            return {'status': 404}
-        return result
     # ***************************************  scrap_yuden data from csv.  ***********************************************
 
     def scrap_yuden(self, partnumber):
@@ -1515,7 +1695,7 @@ class Scrapper(Mouser):
         except Exception as e:
             print(e)
             return {status: 404}
-    # ***************************************  scrap_Rscomponents data from csv.  ***********************************************
+    # ***************************************  scrap_alphawire data from csv.  ***********************************************
 
     def scrap_alphawire(self, partnumber):
         partnumber = partnumber.replace("&45F", "/")
@@ -1553,12 +1733,218 @@ class Scrapper(Mouser):
                 'RoHS Declaration': f"{ro_hs_declaration_url}{product_number}"
             }
             return result
+
+         # ***************************************  scrap_analog data from web.  ***********************************************
+
+    def scrap_analog(self, part_number):
+        options = Options()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        base_url = "https://www.analog.com"
+        driver = webdriver.Chrome("/usr/bin/chromedriver", options=options)
+        print(f"Scraping data for part number: {part_number}")
+        url = f"https://www.analog.com/en/products/{part_number}.html#product-overview"
+        driver.implicitly_wait(2)
+        driver.get(url)
+        try:
+            analog_part_number = driver.find_element(
+                By.CLASS_NAME, "adi-pdp__product__name__generic"
+            ).text
+
+            analog_part_name = driver.find_element(
+                By.CLASS_NAME, "adi-pdp__product__description"
+            ).text.split("\n")[0]
+            categories = driver.find_elements(
+                By.XPATH, "//a[@class='category']")
+
+            category = ", ".join(
+                [
+                    category.accessible_name
+                    for category in categories
+                ]
+            )
+
+            datasheet = 'N/A'
+            datasheet_div = driver.find_elements(
+                By.XPATH, "//div[@class='datasheet primary dropdown']//a"
+            )
+            if datasheet_div:
+                datasheet = datasheet_div[0].get_attribute('href')
+
+            material_declaration = f"https://quality.analog.com/viewdeclaration.aspx?pkgcode=C272C3%2b1&partNumber={part_number}%2b"
+
+            driver.get(material_declaration)
+
+            rohs_label = driver.find_element(
+                By.XPATH, "//*[contains(text(),'RoHS')]")
+
+            rohs_status = rohs_label.find_element(
+                By.XPATH, "following-sibling::td").text
+
+            result = {
+                "Results": "Found",
+                "Part Number": analog_part_number,
+                "Part Name": analog_part_name,
+                "Category": category,
+                "RoHS Compliant Status": rohs_status,
+                "Material Declaration": material_declaration,
+                "Datasheet": datasheet,
+            }
+            print(f"Data successfully scraped for part number: {part_number}")
+        except Exception as exc:
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+        return result
+
+ # ***************************************  scrap_tti data from csv.  ***********************************************
+
+    def scrap_tti(self, part_number):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1 Mobile/15E148 Safari/604.1"}
+
+        url = f"https://www.tti.com/content/ttiinc/en/apps/part-detail.html?partsNumber={part_number}"
+
+        response = requests.get(url, headers=headers, timeout=15)
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        try:
+            tti_part_number = soup.find(
+                "span", string="TTI Part Number: "
+            ).next_sibling.get_text(strip=True)
+
+            mfr_part_number = soup.find(
+                "span", string="Mfr Part Number: "
+            ).next_sibling.get_text(strip=True)
+
+            manufacturer = soup.find(
+                "a", {"id": "manufacturerName"}).get_text(strip=True)
+
+            rohs_status = soup.find(
+                "span", string="RoHS Compliant").next_sibling.contents[0]
+
+            reach_svhc = soup.find("span", string="REACH SVHC").next_sibling.get_text(
+                strip=True
+            )
+
+            reach_substance_name = soup.find(
+                "span", string="REACH Substance Name"
+            ).next_sibling.get_text(strip=True)
+
+            datasheet = soup.find("h3", string="Datasheet")
+
+            if datasheet:
+                datasheet_pdf = soup.find("a", string="Datasheet")["href"]
+            else:
+                datasheet_pdf = "N/A"
+            result = {
+                "Results": "Found",
+                "TTI Part Number": tti_part_number,
+                "Mfr Part Number": mfr_part_number,
+                "Manufacturer": manufacturer,
+                "RoHS Compliant Status": rohs_status,
+                "REACH SVHC": reach_svhc,
+                "REACH Substance Name": reach_substance_name,
+                "Datasheet": datasheet_pdf,
+            }
+        except AttributeError:
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+
+        return result
+
+    # ***************************************  scrap_pemnet data from csv.  ***********************************************
+
+    def scrap_pemnet(self, part_number):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+        }
+        url = f"https://www.pemnet.com/eu/products/product-finder/{part_number}/"
+
+        response = requests.get(url, headers=headers, timeout=15)
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        try:
+            datasheet = 'Not available'
+            if soup.find("div", class_="wp-block-button product__button product__sheets"):
+                datasheet = soup.find(
+                    "div", class_="wp-block-button product__button product__sheets"
+                ).find_next("a")["href"]
+            brand = 'Not available'
+            if soup.find('dt', string='Brand'):
+                brand = soup.find(
+                    'dt', string='Brand').next_sibling.get_text(strip=True)
+            result = {
+                "Results": "Found",
+                "Part Number": soup.find(
+                    "h1", class_="product__sku product__sku--desktop"
+                ).get_text(strip=True),
+                "Product Category": soup.find(
+                    "dt", string="Product Category"
+                ).next_sibling.get_text(strip=True),
+                "Brand": brand,
+                "Datasheet": datasheet,
+            }
+        except AttributeError:
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+
+        return result
+
+    # ***************************************  scrape_mcmaster data from csv.  ***********************************************
+
+    def scrape_mcmaster(self, part_number):
+        print(f"Scraping data for part number: {part_number}")
+        url = f"https://www.mcmaster.com/{part_number}/"
+        options = uc.ChromeOptions()
+        options.add_argument("--no-sandbox")
+        options.add_argument('--headless')
+        driver = uc.Chrome(options=options)
+        driver.implicitly_wait(1)
+        driver.get(url)
+        try:
+            part_name = driver.find_elements(
+                By.CLASS_NAME, "header-secondary--pd")
+            part_name = 'N/A' if not part_name else part_name[0].text
+            category = driver.find_element(
+                By.CLASS_NAME, "header-primary--pd").text
+
+            status = driver.find_element(By.CLASS_NAME, "stock-status").text
+
+            rohs = (
+                driver.find_element(By.XPATH, "//*[contains(text(), 'RoHS')]")
+                .find_element(By.XPATH, "following-sibling::td")
+                .text
+            )
+
+            reach = (
+                driver.find_element(By.XPATH, "//*[contains(text(), 'REACH')]")
+                .find_element(By.XPATH, "following-sibling::td")
+                .text
+            )
+
+            result = {
+                "Part Number": part_number,
+                "Part Name": part_name,
+                "Status": status,
+                "Category": category,
+                "RoHS": rohs,
+                "REACH": reach,
+            }
+            print(f"Data successfully scraped for part number: {part_number}")
+        except Exception as exc:
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+        return result
+
     # ***************************************  scrap_Rscomponents data from csv.  ***********************************************
 
     def scrap_Rscomponentss(self, partnumbers):
         try:
             url = "https://export.rsdelivers.com/productlist/search?query=" + \
-                urllib.parse.quote(str(partnumber))
+                urllib.parse.quote(str(partnumbers))
 
             r = requests.get(url)
             data = BeautifulSoup(r.text, 'lxml')
@@ -1571,93 +1957,176 @@ class Scrapper(Mouser):
             mpn = data.find("div", class_='pill-component-module_grey__38ctb').find_next(
                 "div", class_='pill-component-module_grey__38ctb').find_next("div", class_='pill-component-module_grey__38ctb').text
 
-            return {"Results": "Found", "Partnumber": partnumber, "mpn": mpn, "partName": partName, "manufacturerName": manufacturerName}
+            return {"Results": "Found", "Partnumber": partnumbers, "mpn": mpn, "partName": partName, "manufacturerName": manufacturerName}
         except Exception as e:
             print(e)
             return {"status": 404}
 
     # ***************************************  scrap_Te data from csv.  ***********************************************
-    def scrap_Tes(self, partnumbers):
-        try:
-            url = "https://www.te.com/commerce/alt/ValidateParts.do"
+    # def scrap_Tes(self, partnumbers):
+    #     try:
+    #         url = "https://www.te.com/commerce/alt/ValidateParts.do"
 
-            payload = 'partNumber=' + partnumber
+    #         payload = 'partNumber=' + partnumber
+    #         headers = {
+    #             'authority': 'www.te.com',
+    #             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+    #             'accept-language': 'en-US,en;q=0.9',
+    #             'cache-control': 'max-age=0',
+    #             'content-type': 'application/x-www-form-urlencoded',
+    #             'referer': 'https://www.te.com/commerce/alt/product-compliance.do',
+    #             'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',
+    #             'sec-ch-ua-mobile': '?1',
+    #             'sec-ch-ua-platform': '"Android"',
+    #             'sec-fetch-dest': 'document',
+    #             'sec-fetch-mode': 'navigate',
+    #             'sec-fetch-site': 'same-origin',
+    #             'sec-fetch-user': '?1',
+    #             'upgrade-insecure-requests': '1',
+    #             'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Mobile Safari/537.36',
+    #             'Access-Control-Request-Method': '*',
+    #             'x-requested-with': 'XMLHttpRequest'
+
+    #         }
+
+    #         response = requests.request(
+    #             "POST", url, headers=headers, data=payload)
+    #         soup = BeautifulSoup(response.text, 'lxml')
+    #         tePartNum = soup.find('div', class_='product_description').text
+    #         status = soup.find('table').find('tbody').find('tr').find(
+    #             'td').find('a').find_next('a').find_next('a').text
+    #         rohsInfo = soup.find('table').find('tbody').find('tr').find(
+    #             'td').find_next('td').find('div', class_='compliance').find('a').text
+    #         # try:
+    #         rohsExcemption = soup.find('table').find('tbody').find('tr').find(
+    #             'td').find_next('td').find('div', class_='compliance').find('div', style='margin-top:8px;').text
+
+    #         # except Exception:
+    #         # pass
+    #         current_reach_candidate = soup.find('table').find('tbody').find('tr').find('td').find_next('td').find('div', class_='compliance').find_next(
+    #             'div', class_='compliance').find_next('div', class_='compliance').find_next('div', class_='compliance').find('span').text
+    #         current_reach_declaration = soup.find('table').find('tbody').find('tr').find('td').find_next('td').find('div', class_='compliance').find_next(
+    #             'div', class_='compliance').find_next('div', class_='compliance').find_next('div', class_='compliance').find('span').find_next('span').text
+    #         svhc = soup.find('table').find('tbody').find('tr').find('td').find_next('td').find('div', class_='compliance').find_next(
+    #             'div', class_='compliance').find_next('div', class_='compliance').find_next('div', class_='compliance').find('span').find_next('span').find_next('span').text
+    #         return {"Results": "Found", "Status": status, "TE-PartNum": tePartNum, "rohsInfo": rohsInfo,
+    #                 "rohs-excemption": rohsExcemption, "reach-candidate": current_reach_candidate, "rewach-declaration": current_reach_declaration, "svhc": svhc, "declaration-link": 'https://www.te.com/commerce/alt/SinglePartSearch.do?PN='+tePartNum+'&dest=stmt'}
+    #     except Exception as e:
+    #         print(e)
+    #         return {"status": 404}
+
+    # # ***************************************  scrap_omron data from csv.  ***********************************************
+    # def scrap_omrons(self, partnumber):
+    #     try:
+    #         url = "https://industrial.omron.eu/en/api/rohs_reach/search.json?q=" + \
+    #             str(partnumber) + "&page=1"
+    #         payload = {}
+    #         headers = {
+    #             'authority': 'industrial.omron.eu',
+    #             'accept': 'application/json, text/javascript, */*; q=0.01',
+    #             'accept-language': 'en-US,en;q=0.9',
+    #             # 'cookie': 'OMR_USER_LANG=EU-en; _gcl_au=1.1.1823097155.1661233578; _ga=GA1.3.1108793817.1661233578; _gid=GA1.3.1802832004.1661233578; nQ_cookieId=6a1bd137-c19e-3e85-c194-42f967dcb5dc; nQ_userVisitId=516dbf5b-534c-5333-a722-578b538d38a0; AMCVS_7FCC6D075DDD2B730A495C72%40AdobeOrg=1; AMCV_7FCC6D075DDD2B730A495C72%40AdobeOrg=-432600572%7CMCIDTS%7C19228%7CMCMID%7C51015238740838683563499486990667075736%7CMCAAMLH-1661838380%7C6%7CMCAAMB-1661838380%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1661240780s%7CNONE%7CvVersion%7C4.5.2; tracking_enabled=true; updated_bar=true; s_cc=true; ELOQUA=GUID=6255A7F231D5496BB717432E9D0FC266; _navigation=60ba1233651a71dfcde6938d71ca7b99db31fc7c; stat_track_u_id=uid%3D915270800%26f%3D5373%253A1022%26st%3D1%26sy%3D%26ls%3D1661244382%26off%3D%26noacts%3D%26dg%3D%26hs%3D1; _stat_track_s_id=_si%3D1661233584%26_sid%3D1661244382%26_inew%3D1%26_ls%3D1661244382%26_lurl%3D1785484693%26_lrfr%3D1785484693%26_la%3D1661244760%26_so%3D%26_pp%3D%26_bh%3D382%26_ane%3D%26_te%3D%26_nay%3D%26_nae%3D%26_nac%3D; s_ips=1077; s_sq=%5B%5BB%5D%5D; _session=4Mc37rGQbTiSFsNImDbzzfBBcl7%2FHA%2Bykdok08VY0UZaAJ8skC95teMB6tLb0sI0bVCgHTDiBnAZX9Jor%2BC2Xnho%2BDZbmCw%2FljXDYjr6HgTVl%2FJdvaxQT%2Fxd8nO5X5JCxq78INmknLPReBPmBA8RpxYx8X3xY3XLJnl3qStDxFO%2BDEN8I9EsmBrFbP4kA4u0j7bS%2BaI0FXnzwEVGJaTvd6dNbcR8gNwwidTmgVZCwanIt9XH6zX8ouKcwGzuVBPiSZmjiu3y5t7HHTozmFnwQtE8s2hbhoeUs0ZZoco4FK3AKNUL0sstxxZ9PXKelr6VSZjSWuir9yjknLDrstu1RD2i95ok4w2i%2Bb%2FsfDbWlmWprJlpW3IYLRl3380cupSkoyPbeRKHFL6ipi1Mwh%2BvfFJ8t77g9hFkuFcFKcrZw3qk0y2TstGcghfNYB5rKhj2vL9cA%2BKS0DkKbfyTSlqqq7cG7xlYoysXR19V7TlivLiqK%2Fyc3cXvoo7xMJVC4xKhP6qZtK5z9XuWArE8b8VGksKg6efm46Lh2SC8Bi8MsIb%2FGA9TgpItsQw%2BzZFRIeYNMh13OmuaHdNWfHzaO845hw%2B0ozKxa7VS8qY%2Fm4dTv0qKV%2BJL2SJFM2uRTpEVqKae6gMq5TL%2FGt1He9%2BnCgAOyuR8NTVTDISjrvMQM1TY5%2BfSsmRZB%2F807Ac1Cvf5%2FjOFwhEGgIznaX3onDA3h0WZc7UZDafiGRfGIEvBy1m8t%2BZbqt8dc9uTE68w3hlBQB8%2BW1iC7KmhQwb7ouRdXFIZSqMMeX5QxLrNY4JsfoQ5TpQfu%2Bup0YhI4ZZFm%2Fc0xhS76POOhiTq4NvwlhAJ%2BriJwbWWTXEp9lSbKfGiuEXksHG9w3rW%2Fc4lXA02kxBAbGFlKPGWPLr%2B1CEw8Xd4sGketj1p2lS%2F5lb9uMopYTMa5CreQwoqcM3s%2FgS757fcVb3HPBRbYHlhhc6vpVOSqEeP1uP1oPweP6FWa06nBKM8ONCbrbADxptRnOP6FYwDtLXYLrrU9cqWZCfGi8f6%2BC5vkWot--58sY8NsqHgQGAEqy--%2Bw6DkPGXRivhoeQC4nY%2FvA%3D%3D; s_tp=1814; s_ppv=industrialeu%253Aen%253Aservices-support%253Asupport%253Aenvironmental-product-information%2C59%2C59%2C1077%2C1%2C3; OMR_USER_LANG=EU-en; _session=00ggeX7geMnlgzhSKJVrc6vSmgZ%2FABN7AjFjMWql%2Bij2ceMyV2twQDMNEv8ppUZBgPUTB4AXjnRVoapzOAMR61e1%2BY3yTamB0PWMkXOwlJi6DbrQkJpeaUTPJi40wb2cdll%2FJFrKS%2FHQJ6WGnQySdW5odvgtGqUy8tXAx4UlWymkyAM8nFlKc5xOS2RMtTBavRUXv5vzaBH3NfzjmN5u39fmq0ikB0fhCZ7sNblEPf66aWidyDTlMtgF5nLQseulUFTXhXXgwubm0HmR9Ve1uSby7AqvmGiGpjgoiiPfzTiZcbRt7H0QPHA8SDZlVSIg3oriUTsMg%2Frwybdo3oetZnedOLqxhWrciS8Nx20g7FN1zttKDuaeEQTyA%2BrW85C0GflqNlx47j%2BtvjmfsIT1janrBVNDagM4aokkZW8R34StPWAy9mobfDatKZ1nfbsp29pXL4ZjdEe6WuajCirv4VaRU2a%2BCgoGkP%2ByiQh%2BCT%2FU9Vxk29aQfVqRyFJ7iFqehnIN67S89janEs0vIxziCsW8KFVLge4tdMBBfQeL6IDi%2BQkcNO6GoMOLM5fKkm0tEW3pspRWzUwLAiYqGA3yY%2FgxsuZpqDlAw9KUlNviIsQuXDifXVb4I7%2FvOWBwR%2BkXuLJJojGh0XeZadH6oXpclq576gc%2Ffq3ZO8rxafNX8cfxAtd1tD5AAZMUBkWmw9jJzCGuyToMe%2FhFB08rAUNVpPOiKCroW8mbUJKI3n%2ByekEeyAv1EAXEzbyLYJhA6NcGukl5UQAHfx9rjn648w46n9OCk5c9wrk97nAF4SLU5AAszWSa8uCfs0TSfpRs%2FQEhi0d2zSzRHZvHqw6pRK6ZNiI9qkDujl%2FbXZFZBdwIPhZFwqabd2nrBBR9U6XCi6LsdWuagX8SJb5W8ow47o0vRyEJEPSlXUuOmHEuybjMUtWGy8LiTp9Wrje7lL8vasDB1PytQb132gLCyvv4d1C%2B55CXS%2Bh8eK0biImvxhlLP66QiC%2FUlwjRqOuPwh5HRM3%2BAXvRnSzPFTbsXiqgVQDU5MbE--2k1eRLZg0nZy9lF2--bjMe8r7ZjAp%2FsNfp%2BQzrTA%3D%3D',
+    #             'if-none-match': 'W/"78c252489f63d35938e4b3b08d94af48"',
+    #             'referer': 'https://industrial.omron.eu/en/services-support/support/environmental-product-information',
+    #             'sec-ch-ua': '"Chromium";v="104", " Not A;Brand";v="99", "Google Chrome";v="104"',
+    #             'sec-ch-ua-mobile': '?1',
+    #             'sec-ch-ua-platform': '"Android"',
+    #             'sec-fetch-dest': 'empty',
+    #             'sec-fetch-mode': 'cors',
+    #             'sec-fetch-site': 'same-origin',
+    #             'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Mobile Safari/537.36',
+    #             'x-csrf-token': 'sffvsIpH2eIPkz3qwj0Knx3QXlaKcnHsr0incPTXMqs7H0QW7RepIWyVv2qZGFz3RbCcijjDu/YKX5YeL0phFw==',
+    #             'x-requested-with': 'XMLHttpRequest'}
+    #         r = requests.request("GET", url, headers=headers, data=payload)
+    #         response = r.json()
+    #         for res in response['results']:
+    #             if res['description'] == str(partnumber) or res['description'] == str(partnumber).replace("-", ""):
+    #                 item_code = res['short_item_code']
+    #                 return {"Results": "Found", "GrabbedSPN": res['description'], "RoHS 2011/65/EU": res['rohs6_compliant'], "RoHS (EU)2015/863": res['rohs10_compliant'], "SVHC contained": res['reach_substances'], "rohs-link": 'https://industrial.omron.eu/en/pdf/rohs/' + str(item_code) + '.pdf?directive=10', "reach-link": 'https://industrial.omron.eu/en/pdf/reach/' + str(item_code) + '.pdf'}
+    #         return {"status": 404}
+    #     except Exception as e:
+    #         print(e)
+    #         return {"status": 404}
+
+    # ***************************************  scrap_abracon data from csv.  ***********************************************
+
+    def scrap_abracon(self, partnumber):
+        try:
+            url = "https://abracon.com/parametric/oscillators/"+partnumber
+            payload = {}
             headers = {
-                'authority': 'www.te.com',
-                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+                'authority': 'abracon.com',
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'accept-language': 'en-US,en;q=0.9',
-                'cache-control': 'max-age=0',
-                'content-type': 'application/x-www-form-urlencoded',
-                'referer': 'https://www.te.com/commerce/alt/product-compliance.do',
-                'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',
+                'cache-control': 'no-cache',
+                'cookie': 'msd365mkttr=eZzKTCwJwsVZKbxpGmG6kFYcK7X1U6WuqkImWkp2; _ga=GA1.1.1208419317.1668778594; s_fid=2AABAF8836FC9DBE-04379C4085190E18; poptin_user_id=0.ih61vkykgw; poptin_user_ip=41.72.215.154; poptin_user_country_code=false; __utmz=73986242.1668779192.2.2.utmcsr=google|utmccn=(organic)|utmcmd=organic|utmctr=(not%20provided); poptin_d_a_x_v_265c22a6224ac=2023-02-07; poptin_session_account_dbe72b3615145=true; poptin_c_visitor=true; ln_or=eyIyNTUwNTAwIjoiZCJ9; __utmc=73986242; poptin_old_user=true; msd365mkttrs=4L4femqD; poptin_d_a_x_v_16715513259e6=2023-02-13; poptin_o_a_d_16715513259e6=a7baa09650e13; poptin_c_p_o_x_c_16715513259e6=16715513259e6; poptin_d_a_x_v_54316880c9ee4=2023-02-13; poptin_o_a_d_54316880c9ee4=9fe6ade0176b3; poptin_c_p_o_x_c_54316880c9ee4=54316880c9ee4; poptin_d_a_x_v_a8d9a08f8c613=2023-02-13; poptin_o_a_d_a8d9a08f8c613=ae6931e0deb78; __utma=73986242.1208419317.1668778594.1676359490.1676365743.18; __utmt=1; poptin_session=true; _ga_LTFVKW811Z=GS1.1.1676365762.16.1.1676365785.0.0.0; _iub_cs-14915140=%7B%22consent%22%3Atrue%2C%22timestamp%22%3A%222022-11-18T13%3A36%3A33.603Z%22%2C%22version%22%3A%221.42.4%22%2C%22id%22%3A14915140%2C%22cons%22%3A%7B%22rand%22%3A%22805536%22%7D%7D; __utmb=73986242.4.10.1676365743; poptin_referrer=',
+                'pragma': 'no-cache',
+                'sec-ch-ua': '"Chromium";v="110", "Not A(Brand";v="24", "Google Chrome";v="110"',
                 'sec-ch-ua-mobile': '?1',
                 'sec-ch-ua-platform': '"Android"',
                 'sec-fetch-dest': 'document',
                 'sec-fetch-mode': 'navigate',
-                'sec-fetch-site': 'same-origin',
+                'sec-fetch-site': 'none',
                 'sec-fetch-user': '?1',
                 'upgrade-insecure-requests': '1',
-                'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Mobile Safari/537.36',
-                'Access-Control-Request-Method': '*',
-                'x-requested-with': 'XMLHttpRequest'
-
+                'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36'
             }
 
             response = requests.request(
-                "POST", url, headers=headers, data=payload)
+                "GET", url, headers=headers, data=payload)
             soup = BeautifulSoup(response.text, 'lxml')
-            tePartNum = soup.find('div', class_='product_description').text
-            status = soup.find('table').find('tbody').find('tr').find(
-                'td').find('a').find_next('a').find_next('a').text
-            rohsInfo = soup.find('table').find('tbody').find('tr').find(
-                'td').find_next('td').find('div', class_='compliance').find('a').text
-            # try:
-            rohsExcemption = soup.find('table').find('tbody').find('tr').find(
-                'td').find_next('td').find('div', class_='compliance').find('div', style='margin-top:8px;').text
-
-            # except Exception:
-            # pass
-            current_reach_candidate = soup.find('table').find('tbody').find('tr').find('td').find_next('td').find('div', class_='compliance').find_next(
-                'div', class_='compliance').find_next('div', class_='compliance').find_next('div', class_='compliance').find('span').text
-            current_reach_declaration = soup.find('table').find('tbody').find('tr').find('td').find_next('td').find('div', class_='compliance').find_next(
-                'div', class_='compliance').find_next('div', class_='compliance').find_next('div', class_='compliance').find('span').find_next('span').text
-            svhc = soup.find('table').find('tbody').find('tr').find('td').find_next('td').find('div', class_='compliance').find_next(
-                'div', class_='compliance').find_next('div', class_='compliance').find_next('div', class_='compliance').find('span').find_next('span').find_next('span').text
-            return {"Results": "Found", "Status": status, "TE-PartNum": tePartNum, "rohsInfo": rohsInfo,
-                    "rohs-excemption": rohsExcemption, "reach-candidate": current_reach_candidate, "rewach-declaration": current_reach_declaration, "svhc": svhc, "declaration-link": 'https://www.te.com/commerce/alt/SinglePartSearch.do?PN='+tePartNum+'&dest=stmt'}
+            rohs = soup.find(class_='check').find(
+                'p').find_next('p').text.strip()
+            lead = soup.find(class_='check').find(
+                'p').find_next('p').find_next('p').text.strip()
+            status = soup.find(class_='details').find('ul').find_next(
+                'ul').find_next('ul').find('li').find_next('li').text.strip()
+            print(rohs, lead, status)
+            series = soup.find(class_='details').find('ul').find_next('ul').find_next('ul').find_next('ul').find_next('ul').find_next(
+                'ul').find_next('ul').find_next('ul').find_next('ul').find_next('ul').find('li').find_next('li').text.strip()
+            return {"Results": "Found", "rohs": rohs, "lead": lead, "status": status, "series": series}
         except Exception as e:
             print(e)
             return {"status": 404}
 
-    # ***************************************  scrap_omron data from csv.  ***********************************************
-    def scrap_omrons(self, partnumbers):
+     # ***************************************  scrap_panasonic data from csv.  ***********************************************
+
+    def scrap_panasonic(self, partnumber):
         try:
-            url = "https://industrial.omron.eu/en/api/rohs_reach/search.json?q=" + \
-                str(partnumber) + "&page=1"
+            url = "https://industrial.panasonic.com/ww/products/pt/"+partnumber+"/lineup"
+
             payload = {}
             headers = {
-                'authority': 'industrial.omron.eu',
-                'accept': 'application/json, text/javascript, */*; q=0.01',
-                'accept-language': 'en-US,en;q=0.9',
-                # 'cookie': 'OMR_USER_LANG=EU-en; _gcl_au=1.1.1823097155.1661233578; _ga=GA1.3.1108793817.1661233578; _gid=GA1.3.1802832004.1661233578; nQ_cookieId=6a1bd137-c19e-3e85-c194-42f967dcb5dc; nQ_userVisitId=516dbf5b-534c-5333-a722-578b538d38a0; AMCVS_7FCC6D075DDD2B730A495C72%40AdobeOrg=1; AMCV_7FCC6D075DDD2B730A495C72%40AdobeOrg=-432600572%7CMCIDTS%7C19228%7CMCMID%7C51015238740838683563499486990667075736%7CMCAAMLH-1661838380%7C6%7CMCAAMB-1661838380%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1661240780s%7CNONE%7CvVersion%7C4.5.2; tracking_enabled=true; updated_bar=true; s_cc=true; ELOQUA=GUID=6255A7F231D5496BB717432E9D0FC266; _navigation=60ba1233651a71dfcde6938d71ca7b99db31fc7c; stat_track_u_id=uid%3D915270800%26f%3D5373%253A1022%26st%3D1%26sy%3D%26ls%3D1661244382%26off%3D%26noacts%3D%26dg%3D%26hs%3D1; _stat_track_s_id=_si%3D1661233584%26_sid%3D1661244382%26_inew%3D1%26_ls%3D1661244382%26_lurl%3D1785484693%26_lrfr%3D1785484693%26_la%3D1661244760%26_so%3D%26_pp%3D%26_bh%3D382%26_ane%3D%26_te%3D%26_nay%3D%26_nae%3D%26_nac%3D; s_ips=1077; s_sq=%5B%5BB%5D%5D; _session=4Mc37rGQbTiSFsNImDbzzfBBcl7%2FHA%2Bykdok08VY0UZaAJ8skC95teMB6tLb0sI0bVCgHTDiBnAZX9Jor%2BC2Xnho%2BDZbmCw%2FljXDYjr6HgTVl%2FJdvaxQT%2Fxd8nO5X5JCxq78INmknLPReBPmBA8RpxYx8X3xY3XLJnl3qStDxFO%2BDEN8I9EsmBrFbP4kA4u0j7bS%2BaI0FXnzwEVGJaTvd6dNbcR8gNwwidTmgVZCwanIt9XH6zX8ouKcwGzuVBPiSZmjiu3y5t7HHTozmFnwQtE8s2hbhoeUs0ZZoco4FK3AKNUL0sstxxZ9PXKelr6VSZjSWuir9yjknLDrstu1RD2i95ok4w2i%2Bb%2FsfDbWlmWprJlpW3IYLRl3380cupSkoyPbeRKHFL6ipi1Mwh%2BvfFJ8t77g9hFkuFcFKcrZw3qk0y2TstGcghfNYB5rKhj2vL9cA%2BKS0DkKbfyTSlqqq7cG7xlYoysXR19V7TlivLiqK%2Fyc3cXvoo7xMJVC4xKhP6qZtK5z9XuWArE8b8VGksKg6efm46Lh2SC8Bi8MsIb%2FGA9TgpItsQw%2BzZFRIeYNMh13OmuaHdNWfHzaO845hw%2B0ozKxa7VS8qY%2Fm4dTv0qKV%2BJL2SJFM2uRTpEVqKae6gMq5TL%2FGt1He9%2BnCgAOyuR8NTVTDISjrvMQM1TY5%2BfSsmRZB%2F807Ac1Cvf5%2FjOFwhEGgIznaX3onDA3h0WZc7UZDafiGRfGIEvBy1m8t%2BZbqt8dc9uTE68w3hlBQB8%2BW1iC7KmhQwb7ouRdXFIZSqMMeX5QxLrNY4JsfoQ5TpQfu%2Bup0YhI4ZZFm%2Fc0xhS76POOhiTq4NvwlhAJ%2BriJwbWWTXEp9lSbKfGiuEXksHG9w3rW%2Fc4lXA02kxBAbGFlKPGWPLr%2B1CEw8Xd4sGketj1p2lS%2F5lb9uMopYTMa5CreQwoqcM3s%2FgS757fcVb3HPBRbYHlhhc6vpVOSqEeP1uP1oPweP6FWa06nBKM8ONCbrbADxptRnOP6FYwDtLXYLrrU9cqWZCfGi8f6%2BC5vkWot--58sY8NsqHgQGAEqy--%2Bw6DkPGXRivhoeQC4nY%2FvA%3D%3D; s_tp=1814; s_ppv=industrialeu%253Aen%253Aservices-support%253Asupport%253Aenvironmental-product-information%2C59%2C59%2C1077%2C1%2C3; OMR_USER_LANG=EU-en; _session=00ggeX7geMnlgzhSKJVrc6vSmgZ%2FABN7AjFjMWql%2Bij2ceMyV2twQDMNEv8ppUZBgPUTB4AXjnRVoapzOAMR61e1%2BY3yTamB0PWMkXOwlJi6DbrQkJpeaUTPJi40wb2cdll%2FJFrKS%2FHQJ6WGnQySdW5odvgtGqUy8tXAx4UlWymkyAM8nFlKc5xOS2RMtTBavRUXv5vzaBH3NfzjmN5u39fmq0ikB0fhCZ7sNblEPf66aWidyDTlMtgF5nLQseulUFTXhXXgwubm0HmR9Ve1uSby7AqvmGiGpjgoiiPfzTiZcbRt7H0QPHA8SDZlVSIg3oriUTsMg%2Frwybdo3oetZnedOLqxhWrciS8Nx20g7FN1zttKDuaeEQTyA%2BrW85C0GflqNlx47j%2BtvjmfsIT1janrBVNDagM4aokkZW8R34StPWAy9mobfDatKZ1nfbsp29pXL4ZjdEe6WuajCirv4VaRU2a%2BCgoGkP%2ByiQh%2BCT%2FU9Vxk29aQfVqRyFJ7iFqehnIN67S89janEs0vIxziCsW8KFVLge4tdMBBfQeL6IDi%2BQkcNO6GoMOLM5fKkm0tEW3pspRWzUwLAiYqGA3yY%2FgxsuZpqDlAw9KUlNviIsQuXDifXVb4I7%2FvOWBwR%2BkXuLJJojGh0XeZadH6oXpclq576gc%2Ffq3ZO8rxafNX8cfxAtd1tD5AAZMUBkWmw9jJzCGuyToMe%2FhFB08rAUNVpPOiKCroW8mbUJKI3n%2ByekEeyAv1EAXEzbyLYJhA6NcGukl5UQAHfx9rjn648w46n9OCk5c9wrk97nAF4SLU5AAszWSa8uCfs0TSfpRs%2FQEhi0d2zSzRHZvHqw6pRK6ZNiI9qkDujl%2FbXZFZBdwIPhZFwqabd2nrBBR9U6XCi6LsdWuagX8SJb5W8ow47o0vRyEJEPSlXUuOmHEuybjMUtWGy8LiTp9Wrje7lL8vasDB1PytQb132gLCyvv4d1C%2B55CXS%2Bh8eK0biImvxhlLP66QiC%2FUlwjRqOuPwh5HRM3%2BAXvRnSzPFTbsXiqgVQDU5MbE--2k1eRLZg0nZy9lF2--bjMe8r7ZjAp%2FsNfp%2BQzrTA%3D%3D',
-                'if-none-match': 'W/"78c252489f63d35938e4b3b08d94af48"',
-                'referer': 'https://industrial.omron.eu/en/services-support/support/environmental-product-information',
-                'sec-ch-ua': '"Chromium";v="104", " Not A;Brand";v="99", "Google Chrome";v="104"',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Pragma': 'no-cache',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36',
+                'sec-ch-ua': '"Chromium";v="110", "Not A(Brand";v="24", "Google Chrome";v="110"',
                 'sec-ch-ua-mobile': '?1',
-                'sec-ch-ua-platform': '"Android"',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'same-origin',
-                'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Mobile Safari/537.36',
-                'x-csrf-token': 'sffvsIpH2eIPkz3qwj0Knx3QXlaKcnHsr0incPTXMqs7H0QW7RepIWyVv2qZGFz3RbCcijjDu/YKX5YeL0phFw==',
-                'x-requested-with': 'XMLHttpRequest'}
-            r = requests.request("GET", url, headers=headers, data=payload)
-            response = r.json()
-            for res in response['results']:
-                if res['description'] == str(partnumber) or res['description'] == str(partnumber).replace("-", ""):
-                    item_code = res['short_item_code']
-                    return {"Results": "Found", "GrabbedSPN": res['description'], "RoHS 2011/65/EU": res['rohs6_compliant'], "RoHS (EU)2015/863": res['rohs10_compliant'], "SVHC contained": res['reach_substances'], "rohs-link": 'https://industrial.omron.eu/en/pdf/rohs/' + str(item_code) + '.pdf?directive=10', "reach-link": 'https://industrial.omron.eu/en/pdf/reach/' + str(item_code) + '.pdf'}
-            return {"status": 404}
+                'sec-ch-ua-platform': '"Android"'
+            }
+
+            response = requests.request(
+                "GET", url, headers=headers, data=payload)
+            soup = BeautifulSoup(response.text, 'lxml')
+            totalPage = soup.find(class_='search-header-result').text
+            page = round(int(totalPage.split('of ')[1].split('F')[0])/50)
+            for i in soup.find('tbody').find_all('tr'):
+                try:
+                    partNum = i.find(class_='model').text
+                    series = i.find(
+                        'td', class_='cad-data').find_next('td').find_next('td').text
+                    print(partNum, series)
+                    return {"Results": "Found", "partNumber": partNum, "series": series}
+                except Exception:
+                    pass
         except Exception as e:
             print(e)
             return {"status": 404}
