@@ -656,6 +656,89 @@ async def read_item(body: BodyParam):
         myList.append(future.result())
     return myList
 
+
+@app.get("/scrape_st/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrape_st(part_number)
+
+
+@app.post("/scrape_st_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrape_st, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrape_skywork/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrape_skywork(part_number)
+
+
+@app.post("/scrape_skywork_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrape_skywork, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrap_sager/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrap_sager(part_number)
+
+
+@app.post("/scrap_sager_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrap_sager, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
+
+
+@app.get("/scrape_littelfuse/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrape_littelfuse(part_number)
+
+
+@app.post("/scrape_littelfuse_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        future = executor.submit(scrapper.scrape_littelfuse, (part))
+        futures.append(future)
+
+    for future in futures:
+        myList.append(future.result())
+    return myList
 # @app.get("/scrap_rshughes/{part_number}")
 # def read_item(part_number):
 #     return scrap_rshughes(part_number)

@@ -13,6 +13,10 @@ import time
 import undetected_chromedriver as uc
 from time import sleep
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.keys import Keys
+import ssl
+
 
 # from distributors.rshughes import scrap_rshughes
 
@@ -680,7 +684,6 @@ class Scrapper(Mouser):
                 pass
             excempt = soup.find(class_='compliance').find_all('li')
             for i in excempt:
-                print("-------- in main11 -----------")
                 Rohsexcemptions = Rohsexcemptions.strip() + i.text.strip()
             currentReach = soup.find(class_='compliance').find_next(class_='compliance').find_next(
                 class_='compliance').find_next(class_='compliance').find('span').text.strip()
@@ -690,7 +693,6 @@ class Scrapper(Mouser):
                 class_='compliance').find_next(class_='compliance').find('span').find_next('span').find_next('a').text.strip()
             if no_svhc == 'Does not contain REACH SVHC':
                 nohc = no_svhc
-                print("-------- in main11 -----------")
 
             else:
                 svhc1 = soup.find(class_='compliance').find_next(class_='compliance').find_next(
@@ -700,9 +702,7 @@ class Scrapper(Mouser):
                     count += 1
                     if count > 2 and count < 6:
                         svhc = svhc + '\n' + i
-            print("-------- in main -----------", Rohsexcemptions, rohsInfo)
 
-            print("-------- in main11 -----------")
             return {"Results": 'Found',
                     "status": status,
                     "TEPartNum": tePartNum,
@@ -1694,7 +1694,7 @@ class Scrapper(Mouser):
                     return results
         except Exception as e:
             print(e)
-            return {status: 404}
+            return {"status": 404}
     # ***************************************  scrap_alphawire data from csv.  ***********************************************
 
     def scrap_alphawire(self, partnumber):
@@ -1734,6 +1734,147 @@ class Scrapper(Mouser):
             }
             return result
 
+         # ***************************************  scrape_sager data from web.  ***********************************************
+
+    def scrap_sager(self, part_number):
+        options = uc.ChromeOptions()
+
+        options.add_argument("--headless")
+        options.add_argument("--start-maximized")
+
+        base_url = "https://www.sager.com/"
+
+        with uc.Chrome(options=options) as driver:
+            try:
+                driver.get(base_url)
+                sleep(1)
+
+                input_field = driver.find_element(By.ID, "txtPtSearch")
+
+                input_field.send_keys(part_number)
+
+                input_field.send_keys(Keys.ENTER)
+
+                sleep(2)
+
+                part_name = driver.find_element(
+                    By.ID,
+                    "ctl00_ContentPlaceHolder_PageContent1_PowerProductDetail1_lblShortDescription",
+                ).text
+
+                manufacturer = (
+                    driver.find_element(
+                        By.XPATH, "//th/span[contains(text(), 'Manufacturer')]"
+                    )
+                    .find_element(By.XPATH, "../following-sibling::td")
+                    .text
+                )
+
+                manufacturers_part = (
+                    driver.find_element(
+                        By.XPATH, "//*[contains(text(), 'Manufacturers Part #')]"
+                    )
+                    .find_element(By.XPATH, "../following-sibling::td")
+                    .text
+                )
+                lead_time = "N/A"
+                if driver.find_elements(
+                    By.XPATH, "//th/span[contains(text(), 'Lead Time')]"
+                ):
+                    lead_time = (
+                        driver.find_element(
+                            By.XPATH, "//th/span[contains(text(), 'Lead Time')]"
+                        )
+                        .find_element(By.XPATH, "../following-sibling::td")
+                        .text
+                    )
+                sub_category = "N/A"
+                if driver.find_elements(
+                    By.XPATH, "//th/span[contains(text(), 'Sub-Category')]"
+                ):
+                    sub_category = (
+                        driver.find_element(
+                            By.XPATH, "//th/span[contains(text(), 'Sub-Category')]"
+                        )
+                        .find_element(By.XPATH, "../following-sibling::td")
+                        .text
+                    )
+                elif driver.find_elements(
+                    By.XPATH, "//th/span[contains(text(), 'Sub-Categories')]"
+                ):
+                    sub_category = (
+                        driver.find_element(
+                            By.XPATH, "//th/span[contains(text(), 'Sub-Categories')]"
+                        )
+                        .find_element(By.XPATH, "../following-sibling::td")
+                        .text
+                    )
+                brand = "N/A"
+                if driver.find_elements(By.XPATH, "//th/span[contains(text(), 'Brand')]"):
+                    brand = (
+                        driver.find_element(
+                            By.XPATH, "//th/span[contains(text(), 'Brand')]"
+                        )
+                        .find_element(By.XPATH, "../following-sibling::td")
+                        .text
+                    )
+                series = "N/A"
+                if driver.find_elements(By.XPATH, "//th/span[contains(text(), 'Series')]"):
+                    series = (
+                        driver.find_element(
+                            By.XPATH, "//th/span[contains(text(), 'Series')]"
+                        )
+                        .find_element(By.XPATH, "../following-sibling::td")
+                        .text
+                    )
+
+                rohs = "N/A"
+                if driver.find_elements(
+                    By.ID,
+                    "ctl00_ContentPlaceHolder_PageContent1_PowerProductDetail1_iconRohs",
+                ):
+                    rohs = driver.find_element(
+                        By.ID,
+                        "ctl00_ContentPlaceHolder_PageContent1_PowerProductDetail1_iconRohs",
+                    ).text
+                elif driver.find_elements(
+                    By.ID,
+                    "ctl00_ContentPlaceHolder_PageContent1_PowerProductDetail1_iconNotRohs",
+                ):
+                    rohs = driver.find_element(
+                        By.ID,
+                        "ctl00_ContentPlaceHolder_PageContent1_PowerProductDetail1_iconNotRohs",
+                    ).text
+
+                datasheet = "N/A"
+
+                if driver.find_elements(
+                    By.ID,
+                    "ctl00_ContentPlaceHolder_PageContent1_PowerProductDetail1_specsURL",
+                ):
+                    datasheet = driver.find_element(
+                        By.ID,
+                        "ctl00_ContentPlaceHolder_PageContent1_PowerProductDetail1_specsURL",
+                    ).get_attribute("href")
+
+                result = {
+                    "Results": "Found",
+                    "Part Number": part_number,
+                    "Part Name": part_name,
+                    "Manufacturer": manufacturer,
+                    "Manufacturers Part #": manufacturers_part,
+                    "Lead Time": lead_time,
+                    "Sub-Category": sub_category,
+                    "Brand": brand,
+                    "Series": series,
+                    "RoHS Compliant": rohs,
+                    "Datasheet": datasheet,
+                }
+
+                return result
+            except Exception as exc:
+                print(f"Part {part_number} is not found on server.", exc)
+                return {"status": 404}
          # ***************************************  scrap_analog data from web.  ***********************************************
 
     def scrap_analog(self, part_number):
@@ -1743,10 +1884,20 @@ class Scrapper(Mouser):
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
+
+        columns = [
+            "Part Number",
+            "Part Name",
+            "Category",
+            "RoHS Compliant Status",
+            "Material Declaration",
+            "Datasheet",
+        ]
         base_url = "https://www.analog.com"
-        driver = webdriver.Chrome("/usr/bin/chromedriver", options=options)
         print(f"Scraping data for part number: {part_number}")
         url = f"https://www.analog.com/en/products/{part_number}.html#product-overview"
+
+        driver = webdriver.Chrome("/usr/bin/chromedriver", options=options)
         driver.implicitly_wait(2)
         driver.get(url)
         try:
@@ -1795,8 +1946,66 @@ class Scrapper(Mouser):
             }
             print(f"Data successfully scraped for part number: {part_number}")
         except Exception as exc:
-            print(f"Part {part_number} is not found on server.")
+            print(f"Part {part_number} is not found on server.", exc)
             return {"status": 404}
+        return result
+
+ # ***************************************  scrape_littelfuse data from csv.  ***********************************************
+
+    def scrape_littelfuse(self, part_number):
+        options = Options()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        driver = webdriver.Chrome("/usr/bin/chromedriver", options=options)
+        base_url = "https://www.littelfuse.com/"
+        driver.get(base_url)
+        try:
+            input_field = driver.find_element(
+                By.XPATH, '//div[@class="magic-box-input"]/input'
+            )
+
+            input_field.send_keys(part_number)
+
+            input_field.send_keys(Keys.ENTER)
+
+            sleep(2)
+            search_results = driver.find_elements(
+                By.CLASS_NAME, "CoveoResultLink")
+
+            part_url = search_results[0].get_attribute("href")
+
+            driver.get(part_url)
+
+            part_name = driver.find_element(By.TAG_NAME, "h1").text
+
+            series = driver.find_element(
+                By.XPATH, "//span[contains(text(), 'Series: ')]/a"
+            ).text
+
+            datasheet = "N/A"
+
+            if driver.find_elements(
+                By.XPATH,
+                "//div[@class='feaures-benefits-box']//a[contains(text(), 'sheet')]",
+            ):
+                datasheet = driver.find_element(
+                    By.XPATH,
+                    "//div[@class='feaures-benefits-box']//a[contains(text(), 'sheet')]",
+                ).get_attribute("href")
+            result = {
+                "Results": "Found",
+                "Part Number": part_number,
+                "Part Name": part_name,
+                "Series": series,
+                "DataSheet": datasheet,
+            }
+        except Exception as exc:
+            print(f"Part {part_number} is not found on server.", exc)
+            return {"status": 404}
+
         return result
 
  # ***************************************  scrap_tti data from csv.  ***********************************************
@@ -1893,15 +2102,170 @@ class Scrapper(Mouser):
 
         return result
 
+    # ***************************************  scrape_st data from csv.  ***********************************************
+
+    def scrape_st(self, part_number):
+        try:
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+            options = Options()
+            options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--window-size=192 0,1080")
+            options.add_argument("--ignore-certificate-errors")
+            options.add_argument("--ignore-ssl-errors")
+
+            service = webdriver.chrome.service.Service(
+                executable_path=ChromeDriverManager().install()
+            )
+
+            driver = uc.Chrome(service=service, options=options,
+                               keep_alive=True, ssl_context=ssl_context)
+
+            base_url = "https://www.st.com"
+
+            print(f"Scraping data for part number: {part_number}")
+            driver.implicitly_wait(2)
+            driver.get(base_url)
+            try:
+                search_form_button = driver.find_element(
+                    By.XPATH, '//form[@id="form-search"]/div'
+                )
+                search_form_button.click()
+
+                input_field = driver.find_element(By.ID, "widgetSearchBar")
+
+                input_field.send_keys(part_number)
+
+                input_field.send_keys(Keys.ENTER)
+                print("hello world ------ ")
+                sleep(2)
+                el = driver.find_element(
+                    By.XPATH, '//*[@id="search-table-products"]/tbody/tr'
+                ).find_element(By.TAG_NAME, "a")
+                el.click()
+
+                quality_and_reliability = driver.find_element(
+                    By.XPATH, "//span[contains(text(), ' Quality & Reliability ')]"
+                )
+                quality_and_reliability.click()
+                part_name = driver.find_element(
+                    By.CLASS_NAME, "st-stage-product__copy").text
+
+                product = driver.find_element(
+                    By.XPATH, f"//tr/td[contains(text(), '{part_number}')]"
+                )
+                product_row = product.find_elements(By.XPATH, "../td")
+                product_status = product_row[1].text
+                rohs_compliance_grade = product_row[-2].text
+                material_declaration = "N/A"
+                mat_declaration_tag = product_row[-1].find_elements(
+                    By.TAG_NAME, "a")
+                if mat_declaration_tag:
+                    material_declaration = mat_declaration_tag[0].get_attribute(
+                        "href")
+
+                result = {
+                    "Results": "Found",
+                    "Part Number": part_number,
+                    "Part Name": part_name,
+                    "Status": product_status,
+                    "RoHS Compliant Status": product_status,
+                    "RoHS Compliance Grade": rohs_compliance_grade,
+                    "Material Declaration": material_declaration,
+                }
+                print(
+                    f"Data successfully scraped for part number: {part_number}")
+            except Exception as exc:
+                print(exc)
+                print(f"Part {part_number} is not found on server.")
+                return {"status": 404}
+        except AttributeError as e:
+            print(e)
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+        return result
+
+    # ***************************************  scrape_skywork data from csv.  ***********************************************
+
+    def scrape_skywork(self, part_number):
+        base_url = "https://www.skyworksinc.com"
+        print(f"Scraping data for part number: {part_number}")
+        try:
+            payload = {"SearchText": part_number}
+
+            resp = requests.post(
+                f"{base_url}/api/feature/search/searchitems",
+                params=payload,
+                timeout=10,
+            )
+
+            res = resp.json()
+            part_url = "N/A"
+            for item in res["GlobalResultItems"]:
+                if item["Title"] == part_number:
+                    part_url = f"{base_url}{item['ItemUrl']}"
+
+            resp = requests.get(part_url, timeout=10)
+
+            soup = BeautifulSoup(resp.content, "html.parser")
+
+            part_name = (
+                soup.find("div", class_="row product-details-description")
+                .find("h4")
+                .get_text(strip=True)
+            )
+            product_lifecycle = "N/A"
+            if soup.find("span", string="Product Lifecycle"):
+                product_lifecycle = soup.find(
+                    "span", string="Product Lifecycle"
+                ).next_sibling.get_text(strip=True)
+
+            datasheet = "N/A"
+
+            if (
+                soup.find(
+                    "div", class_="btns-container-new").find("a").get_text(strip=True)
+                == "Data Sheets"
+            ):
+                datasheet = f'{base_url}"{soup.find("div", class_="btns-container-new").find("a")["href"]}'
+
+            certificate_of_conf = f"{base_url}/EnvironmentalProductCertificatePrint.aspx?PartNumber={part_number}"
+
+            cert_resp = requests.get(certificate_of_conf, timeout=10)
+
+            cert_soup = BeautifulSoup(cert_resp.content, "html.parser")
+            if cert_soup.find("h2", string="Part number not found."):
+                certificate_of_conf = "N/A"
+
+            result = {
+                "Results": "Found",
+                "Part Number": part_number,
+                "Part Name": part_name,
+                "Product Lifecycle": product_lifecycle,
+                "Certificate of Conformance": certificate_of_conf,
+                "Datasheet": datasheet,
+            }
+        except Exception:
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+
+        return result
+
     # ***************************************  scrape_mcmaster data from csv.  ***********************************************
 
     def scrape_mcmaster(self, part_number):
-        print(f"Scraping data for part number: {part_number}")
-        url = f"https://www.mcmaster.com/{part_number}/"
         options = uc.ChromeOptions()
         options.add_argument("--no-sandbox")
         options.add_argument('--headless')
         driver = uc.Chrome(options=options)
+        print(f"Scraping data for part number: {part_number}")
+        url = f"https://www.mcmaster.com/{part_number}/"
+
         driver.implicitly_wait(1)
         driver.get(url)
         try:
@@ -1926,6 +2290,7 @@ class Scrapper(Mouser):
             )
 
             result = {
+                "Results": "Found",
                 "Part Number": part_number,
                 "Part Name": part_name,
                 "Status": status,
