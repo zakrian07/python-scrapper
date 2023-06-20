@@ -1,0 +1,25 @@
+# Node.js
+node_modules/
+
+# Next.js build artifacts
+.next/
+out/
+
+# Production build
+build/
+public/
+
+# Next.js development server logs
+logs/
+
+# Environment variables
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*~

@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .smooth-transition {
+    transition-duration: 500ms;
+    transition-timing-function: ease-out;
+    transition: 0.25s;
+  }
+
+
+  .sidebar-element {
+    @apply py-4 px-2 my-2 font-poppins text-lg text-gray-200 w-full cursor-pointer
+  }
+
+  .sidebar-color {
+    @apply bg-gradient-to-t from-[#079290] to-[#215172]
+  }
+
+  .bg-color {
+    @apply bg-gradient-to-t from-[#ff0000] to-[#ff0001]
+  }
+
+  .tablebar-color {
+    @apply bg-gradient-to-t from-[#205a76] to-[#0f868b]
+  }
+
+}
