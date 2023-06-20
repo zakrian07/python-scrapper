@@ -366,8 +366,11 @@ def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrape_mcmaster, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrape_mcmaster, (part))
+            futures.append(future)
+        except Exception as exc:
+            futures.append(exc)
 
     for future in futures:
         myList.append(future.result())

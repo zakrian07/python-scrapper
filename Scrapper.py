@@ -2105,90 +2105,82 @@ class Scrapper(Mouser):
     # ***************************************  scrape_st data from csv.  ***********************************************
 
     def scrape_st(self, part_number):
+
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        options = Options()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=192 0,1080")
+
+        service = webdriver.chrome.service.Service(
+            executable_path=ChromeDriverManager().install()
+        )
+
+        driver = uc.Chrome(service=service, options=options,
+                           keep_alive=True, ssl_context=ssl_context)
+
+        base_url = "https://www.st.com"
+
+        driver.implicitly_wait(2)
+        driver.get(base_url)
         try:
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
-
-            options = Options()
-            options.add_argument("--headless")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--window-size=192 0,1080")
-            options.add_argument("--ignore-certificate-errors")
-            options.add_argument("--ignore-ssl-errors")
-
-            service = webdriver.chrome.service.Service(
-                executable_path=ChromeDriverManager().install()
+            search_form_button = driver.find_element(
+                By.XPATH, '//form[@id="form-search"]/div'
             )
+            search_form_button.click()
 
-            driver = uc.Chrome(service=service, options=options,
-                               keep_alive=True, ssl_context=ssl_context)
+            input_field = driver.find_element(By.ID, "widgetSearchBar")
 
-            base_url = "https://www.st.com"
+            input_field.send_keys(part_number)
 
+            input_field.send_keys(Keys.ENTER)
+            sleep(2)
+            el = driver.find_element(
+                By.XPATH, '//*[@id="search-table-products"]/tbody/tr'
+            ).find_element(By.TAG_NAME, "a")
+            el.click()
             print(f"Scraping data for part number: {part_number}")
-            driver.implicitly_wait(2)
-            driver.get(base_url)
-            try:
-                search_form_button = driver.find_element(
-                    By.XPATH, '//form[@id="form-search"]/div'
-                )
-                search_form_button.click()
+            quality_and_reliability = driver.find_element(
+                By.XPATH, "//span[contains(text(), ' Quality & Reliability ')]"
+            )
+            quality_and_reliability.click()
+            part_name = driver.find_element(
+                By.CLASS_NAME, "st-stage-product__copy").text
 
-                input_field = driver.find_element(By.ID, "widgetSearchBar")
+            product = driver.find_element(
+                By.XPATH, f"//tr/td[contains(text(), '{part_number}')]"
+            )
+            product_row = product.find_elements(By.XPATH, "../td")
+            product_status = product_row[1].text
+            rohs_compliance_grade = product_row[-2].text
+            material_declaration = "N/A"
+            mat_declaration_tag = product_row[-1].find_elements(
+                By.TAG_NAME, "a")
+            if mat_declaration_tag:
+                material_declaration = mat_declaration_tag[0].get_attribute(
+                    "href")
 
-                input_field.send_keys(part_number)
-
-                input_field.send_keys(Keys.ENTER)
-                print("hello world ------ ")
-                sleep(2)
-                el = driver.find_element(
-                    By.XPATH, '//*[@id="search-table-products"]/tbody/tr'
-                ).find_element(By.TAG_NAME, "a")
-                el.click()
-
-                quality_and_reliability = driver.find_element(
-                    By.XPATH, "//span[contains(text(), ' Quality & Reliability ')]"
-                )
-                quality_and_reliability.click()
-                part_name = driver.find_element(
-                    By.CLASS_NAME, "st-stage-product__copy").text
-
-                product = driver.find_element(
-                    By.XPATH, f"//tr/td[contains(text(), '{part_number}')]"
-                )
-                product_row = product.find_elements(By.XPATH, "../td")
-                product_status = product_row[1].text
-                rohs_compliance_grade = product_row[-2].text
-                material_declaration = "N/A"
-                mat_declaration_tag = product_row[-1].find_elements(
-                    By.TAG_NAME, "a")
-                if mat_declaration_tag:
-                    material_declaration = mat_declaration_tag[0].get_attribute(
-                        "href")
-
-                result = {
-                    "Results": "Found",
-                    "Part Number": part_number,
-                    "Part Name": part_name,
-                    "Status": product_status,
-                    "RoHS Compliant Status": product_status,
-                    "RoHS Compliance Grade": rohs_compliance_grade,
-                    "Material Declaration": material_declaration,
-                }
-                print(
-                    f"Data successfully scraped for part number: {part_number}")
-            except Exception as exc:
-                print(exc)
-                print(f"Part {part_number} is not found on server.")
-                return {"status": 404}
-        except AttributeError as e:
-            print(e)
+            result = {
+                "Results": "Found",
+                "Part Number": part_number,
+                "Part Name": part_name,
+                "Status": product_status,
+                "RoHS Compliant Status": product_status,
+                "RoHS Compliance Grade": rohs_compliance_grade,
+                "Material Declaration": material_declaration,
+            }
+            print(
+                f"Data successfully scraped for part number: {part_number}")
+            return result
+        except Exception as exc:
+            print(exc)
             print(f"Part {part_number} is not found on server.")
             return {"status": 404}
-        return result
 
     # ***************************************  scrape_skywork data from csv.  ***********************************************
 
@@ -2262,6 +2254,8 @@ class Scrapper(Mouser):
         options = uc.ChromeOptions()
         options.add_argument("--no-sandbox")
         options.add_argument('--headless')
+        # options.add_argument('--ignore-certificate-errors')
+        # options.add_argument('--ignore-ssl-errors')
         driver = uc.Chrome(options=options)
         print(f"Scraping data for part number: {part_number}")
         url = f"https://www.mcmaster.com/{part_number}/"
@@ -2299,10 +2293,10 @@ class Scrapper(Mouser):
                 "REACH": reach,
             }
             print(f"Data successfully scraped for part number: {part_number}")
+            return result
         except Exception as exc:
             print(f"Part {part_number} is not found on server.")
             return {"status": 404}
-        return result
 
     # ***************************************  scrap_Rscomponents data from csv.  ***********************************************
 
