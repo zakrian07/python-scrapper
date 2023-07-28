@@ -11,10 +11,13 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
 import undetected_chromedriver as uc
+from undetected_chromedriver import Chrome, ChromeOptions
 from time import sleep
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
 import ssl
 
 
@@ -1323,52 +1326,52 @@ class Scrapper(Mouser):
 
         # Checking the response of the scraped data from the two websites.
         response = self.scrap_festo(partnumber)
-        Check_Response("festo", response, suppliers)
+        Check_Response("Festo", response, suppliers)
 
         response = self.scrap_Arrow(partnumber)
-        Check_Response("arrow", response, suppliers)
+        Check_Response("Arrow", response, suppliers)
 
         response = self.scrap_omron(partnumber)
-        Check_Response("omron", response, suppliers)
+        Check_Response("Omron", response, suppliers)
 
         response = self.scrap_Rscomponents(partnumber)
         Check_Response("RS-components", response, suppliers)
 
         response = self.scrap_Maxim(partnumber)
-        Check_Response("maxim", response, suppliers)
+        Check_Response("Maxim Integrated", response, suppliers)
 
         response = self.scrap_Molex(partnumber)
-        Check_Response("molex", response, suppliers)
+        Check_Response("Molex", response, suppliers)
 
         response = self.scrap_Wago(partnumber)
-        Check_Response("wago", response, suppliers)
+        Check_Response("Wago", response, suppliers)
 
         response = self.scrap_Te(partnumber)
-        Check_Response("Te", response, suppliers)
+        Check_Response("TE", response, suppliers)
 
         response = self.scrap_Phoenix(partnumber)
-        Check_Response("phoenix", response, suppliers)
+        Check_Response("Phoenix", response, suppliers)
 
         response = self.scrap_onsemi(partnumber)
-        Check_Response("onsemi", response, suppliers)
+        Check_Response("Onsemi", response, suppliers)
 
         response = self.scrap_mouser(partnumber)
-        Check_Response("mouser", response, suppliers)
+        Check_Response("Mouser Electronics", response, suppliers)
 
         response = self.scrap_3m(partnumber)
-        Check_Response("scrap_3m", response, suppliers)
+        Check_Response("3M", response, suppliers)
 
         response = self.scrap_ti(partnumber)
-        Check_Response("scrap_ti", response, suppliers)
+        Check_Response("Texas Instruments", response, suppliers)
 
         response = self.scrap_murata(partnumber)
-        Check_Response("scrap_murata", response, suppliers)
+        Check_Response("Murata Manufacturing Co", response, suppliers)
 
         response = self.scrap_newark(partnumber)
-        Check_Response("scrap_newark", response, suppliers)
+        Check_Response("Newark Electronics Corporation", response, suppliers)
 
         response = self.scrap_festo(partnumber)
-        Check_Response("scrap_festo", response, suppliers)
+        Check_Response("Festo", response, suppliers)
 
         return suppliers
 
@@ -2102,33 +2105,373 @@ class Scrapper(Mouser):
 
         return result
 
+    def scrape_boeing(self, part_number):
+        try:
+            print(f"Scraping data for part number: {part_number}")
+            url = "https://shop.boeing.com/aviation-supply/search?text={part_number}"
+            payload = {}
+            headers = {
+                'authority': 'shop.boeing.com',
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'accept-language': 'en-US,en;q=0.9',
+                'cache-control': 'no-cache',
+                'pragma': 'no-cache',
+                'sec-ch-ua': '"Chromium";v="110", "Not A(Brand";v="24", "Google Chrome";v="110"',
+                'sec-ch-ua-mobile': '?1',
+                'sec-ch-ua-platform': '"Android"',
+                'sec-fetch-dest': 'document',
+                'sec-fetch-mode': 'navigate',
+                'sec-fetch-site': 'same-origin',
+                'sec-fetch-user': '?1',
+                'upgrade-insecure-requests': '1',
+                'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36'
+            }
+
+            response = requests.request(
+                "GET", url, headers=headers, data=payload)
+            soup = BeautifulSoup(response.text, 'lxml')
+            mpn = soup.find(
+                'div', class_='product-item-details').find('span').text.strip()
+            manufacturer = soup.find(
+                'div', class_='product-item-details').find('a', class_='level5').text.strip()
+            input_tag = soup.find('input', {'id': 'adobePLPProduct'})
+            # Extract the value of the "value" attribute
+            pn = input_tag['value']
+            print(mpn, manufacturer, pn)
+            result = {
+                "Results": "Found",
+                "Part Number": pn,
+                "mpn": mpn,
+                "Manufacturer": manufacturer
+            }
+        except Exception as e:
+            print(f"Part {part_number} is not found on server.", e)
+            raise ValueError({"Results": "Found"})
+        return result
+    # ***************************************   scrape_avnet data from csv.  ***********************************************
+
+    def scrape_avnet(self, part_number):
+        apiKey = "cad4b7e61ea2ff5bfab980cb8bb888b0"
+        print(f"Scraping data for part number: {part_number}")
+        payload = {
+            "api_key": apiKey,
+            "url": f"https://www.avnet.com/shop/us/search/{part_number}",
+            "render": "true",
+        }
+        try:
+            resp = requests.get("http://api.scraperapi.com",
+                                params=payload, timeout=60)
+            soup = BeautifulSoup(resp.content, "html.parser")
+            if "Search Result" in soup.title.get_text():
+                product_name_divs = soup.find_all("div", class_="product-name")
+
+                for product_name_div in product_name_divs:
+                    product_name_link = product_name_div.find("a", href=True)
+                    manufacturer_part = product_name_div.find_next(
+                        "strong", string="Avnet Manufacturer Part #:"
+                    )
+                    if (
+                        manufacturer_part
+                        and manufacturer_part.next_sibling.get_text(strip=True)
+                        == part_number
+                    ):
+                        payload["url"] = product_name_link["href"]
+                        resp = requests.get(
+                            "http://api.scraperapi.com", params=payload, timeout=60
+                        )
+                        soup = BeautifulSoup(resp.content, "html.parser")
+                        break
+            part_name = soup.find(
+                "h2", class_="black regular").get_text(strip=True)
+            manufacturer = "N/A"
+            if soup.find("strong", string="Manufacturer:"):
+                manufacturer = soup.find(
+                    "strong", string="Manufacturer:"
+                ).next_sibling.get_text(strip=True)
+
+            product_category = "N/A"
+
+            if soup.find("div", {"class": "product-category"}):
+                categories = [
+                    el.get_text(strip=True)
+                    for el in soup.find("div", {"class": "product-category"}).find_all("a")
+                ]
+                product_category = ", ".join(categories)
+
+            life_cycle = "N/A"
+
+            if soup.find("span", string="Lifecycle"):
+                life_cycle = "Yes"
+
+            rohs = "N/A"
+            if soup.select('span:-soup-contains("RoHS")'):
+                rohs = soup.select(
+                    'span:-soup-contains("RoHS")')[0].get_text(strip=True)
+
+            datasheet = "N/A"
+
+            if soup.find("a", {"id": "WC_TechnicalSpecification_Image_2_"}):
+                datasheet = soup.find(
+                    "a", {"id": "WC_TechnicalSpecification_Image_2_"}
+                ).get("href")
+
+            result = {
+                "Results": "Found",
+                "Part Number": part_number,
+                "Part Name": part_name,
+                "Manufacturer": manufacturer,
+                "Product Category": product_category,
+                "RoHS": rohs,
+                "Lifecycle": life_cycle,
+                "Datasheet": datasheet,
+            }
+        except Exception as e:
+            print(f"Part {part_number} is not found on server.", e)
+            raise ValueError({"Results": "Found"})
+        return result
+    # ***************************************  scrape distrelec data from csv.  ***********************************************
+
+    def scrape_distrelec(self, part_number):
+        options = uc.ChromeOptions()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument(
+            "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
+        )
+        driver = uc.Chrome(options=options)
+        base_url = "https://www.distrelec.de/"
+        print(f"Scraping data for part number: {part_number}")
+        try:
+            driver.implicitly_wait(2)
+            driver.get(base_url)
+            accept_cookies_button = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "ensCloseBanner"))
+            )
+            accept_cookies_button.click()
+
+            # looking for input to enter part number to look for
+            input_field = driver.find_element(By.ID, "metahd-search")
+
+            input_field.send_keys(part_number)
+
+            submit_button = driver.find_element(By.CLASS_NAME, "btn-search")
+
+            submit_button.click()
+
+            article_number = "N/A"
+            if driver.find_elements(By.ID, "article-number-text"):
+                article_number = (
+                    driver.find_element(By.ID, "article-number-text")
+                    .find_element(By.XPATH, "following-sibling::span")
+                    .text
+                )
+
+            manufacturer = "N/A"
+            if driver.find_elements(By.XPATH, "//span[text()='Manufacturer']"):
+                manufacturer = (
+                    driver.find_element(
+                        By.XPATH, "//span[text()='Manufacturer']")
+                    .find_element(By.XPATH, "following-sibling::span")
+                    .text
+                )
+
+            brand = "N/A"
+
+            if driver.find_elements(By.CLASS_NAME, "elem--brand"):
+                brand = driver.find_element(By.CLASS_NAME, "elem--brand").text.lstrip(
+                    "Brand: "
+                )
+
+            rohs_status = "N/A"
+            if driver.find_elements(By.ID, "ROHS-title"):
+                rohs_status = driver.find_element(By.ID, "ROHS-title").text
+
+            rohs_declaration = "N/A"
+            if driver.find_elements(By.ID, "ROHS-pdf-link"):
+                onclick_text = driver.find_element(By.ID, "ROHS-pdf-link").get_attribute(
+                    "onclick"
+                )
+
+                # Use regex to extract the URL part inside window.open()
+                url_match = re.search(r"window\.open\('(.+?)'", onclick_text)
+                if url_match:
+                    rohs_declaration = f'{base_url.rstrip("/")}{url_match.group(1)}'
+            reach_status = "N/A"
+            if driver.find_elements(By.ID, "REACH-title-id"):
+                reach_status = driver.find_element(
+                    By.ID, "REACH-title-id").text
+            reach_declaration = "N/A"
+            if driver.find_elements(By.XPATH, "//a[text()='REACH Regulation Statement']"):
+                reach_declaration = driver.find_element(
+                    By.XPATH, "//a[text()='REACH Regulation Statement']"
+                ).get_attribute("href")
+            result = {
+                "Results": "Found",
+                "Distrelec Article Number": article_number,
+                "Manufacturer": manufacturer,
+                "Manufacturer Part Number": part_number,
+                "Brand": brand,
+                "RoHS Status": rohs_status,
+                "RoHS Declaration": rohs_declaration,
+                "REACH Regulation Status": reach_status,
+                "REACH Regulation Declaration": reach_declaration,
+            }
+        except Exception:
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+        return result
+    # ***************************************  scrape harwin data from csv.  ***********************************************
+
+    def scrape_harwin(self, part_number):
+        base_url = "https://www.harwin.com"
+        product_url = f"{base_url}/products"
+        form_data = {
+            "action": "product_documents",
+            "documents": "Array,REACH,CMRT-C,CRT-C,HF333",
+            "document_keys": "rohs_compliant,reach,cmrt_0,cmrt_1,cmrt_2",
+            "security": "39dcdf9c43",
+        }
+        admin_url = f"{base_url}/wp-admin/admin-ajax.php"
+        print(f"Scraping data for part number: {part_number}")
+        try:
+            resp = requests.get(f"{product_url}/{part_number}", timeout=15)
+
+            soup = BeautifulSoup(resp.content, "html.parser")
+
+            details_div = soup.find("div", class_="product-page__details")
+            part_name = "N/A"
+            description = "N/A"
+            if details_div:
+                part_name = details_div.find_next("h2").get_text(strip=True)
+                description = details_div.find_next("h3").get_text(strip=True)
+
+            product_status = "N/A"
+            if soup.find("span", class_="product-page__status"):
+                product_status = soup.find("span", class_="product-page__status").get_text(
+                    strip=True
+                )
+
+            rohs_status = "N/A"
+            rohs_pdf = "N/A"
+            reach_pdf = "N/A"
+            if soup.find("h3", string="EU RoHS Status:"):
+                rohs_status = (
+                    soup.find("h3", string="EU RoHS Status:")
+                    .find_next_sibling()
+                    .get_text(strip=True)
+                )
+                rohs_pdf = (
+                    soup.find("h3", string="EU RoHS Status:")
+                    .find_next_sibling()
+                    .find("a")["href"]
+                )
+
+            # fetching data from post request to get reach statment pdf
+
+            resp1 = requests.post(admin_url, data=form_data, timeout=10)
+            if resp1.status_code == 200:
+                soup1 = BeautifulSoup(resp1.content, "html.parser")
+
+                reach_href = soup1.select(
+                    'h3:-soup-contains("REACH")')[0].find("a")["href"]
+                reach_pdf = json.loads(reach_href.replace("\\", ""))
+
+            result = {
+                "Results": "Found",
+                "Part Number": part_number,
+                "Part Name": part_name,
+                "Description": description,
+                "Product Status": product_status,
+                "EU RoHS Status": rohs_status,
+                "RoHS Compliant(PDF)": rohs_pdf,
+                "REACH statement(PDF)": reach_pdf,
+            }
+        except Exception:
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+
+        return result
+    # ***************************************  scrape index corp data from csv.  ***********************************************
+
+    def scrape_index_corp(self, part_number):
+        options = uc.ChromeOptions()
+        options.add_argument("--headless")
+        options.add_argument("--window-size=1920,1080")
+        driver = uc.Chrome(options=options)
+        print(f"Scraping data for part number: {part_number}")
+        base_url = (
+            f"https://www.idex-hs.com/store/search-results/1/?searchCriteria={part_number}"
+        )
+        try:
+            driver.get(base_url)
+            product_link = None
+
+            # close cookie modal
+            if driver.find_elements(By.ID, "onetrust-close-btn-container"):
+                close_btn = driver.find_element(
+                    By.ID, "onetrust-close-btn-container")
+                close_btn.click()
+
+            # look for product with part_number from search results
+            if driver.find_elements(
+                By.XPATH,
+                f"//span[. = '{part_number}']/ancestor::div[2]",
+            ):
+                product = driver.find_element(
+                    By.XPATH,
+                    f"//span[. = '{part_number}']/ancestor::div[2]",
+                )
+                product_link = product.find_element(By.TAG_NAME, "a").get_attribute(
+                    "href"
+                )
+
+            if product_link is None:
+                print(f"Part {part_number} is not found on server.")
+                return {"status": 404}
+
+            driver.get(product_link)
+
+            part_name = "N/A"
+
+            if driver.find_elements(By.TAG_NAME, "h1"):
+                part_name = driver.find_element(By.TAG_NAME, "h1").text
+
+            description = "N/A"
+            try:
+                element = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located(
+                        (By.ID, "scj-html-content-ctl00-Container-C017")
+                    )
+                )
+                description = element.text
+            finally:
+                pass
+
+            result = {
+                "Results": "Found",
+                "Part Number": part_number,
+                "Part Name": part_name,
+                "Description": description,
+            }
+            print(f"Data successfully scraped for part number: {part_number}")
+        except Exception:
+            print(f"Part {part_number} is not found on server.")
+            return {"status": 404}
+        return result
     # ***************************************  scrape_st data from csv.  ***********************************************
 
     def scrape_st(self, part_number):
-
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-
-        options = Options()
+        options = uc.ChromeOptions()
         options.add_argument("--headless")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=192 0,1080")
-
-        service = webdriver.chrome.service.Service(
-            executable_path=ChromeDriverManager().install()
-        )
-
-        driver = uc.Chrome(service=service, options=options,
-                           keep_alive=True, ssl_context=ssl_context)
-
+        # options.binary_location = '/usr/bin/chromedriver'
+        options.add_argument("--window-size=1920,1080")
         base_url = "https://www.st.com"
-
-        driver.implicitly_wait(2)
-        driver.get(base_url)
+        print(f"Scraping data for part number: {part_number}")
+        driver = uc.Chrome(options=options)
+        # with uc.Chrome(options=options) as driver:
         try:
+            driver.implicitly_wait(2)
+            driver.get(base_url)
             search_form_button = driver.find_element(
                 By.XPATH, '//form[@id="form-search"]/div'
             )
@@ -2139,18 +2482,20 @@ class Scrapper(Mouser):
             input_field.send_keys(part_number)
 
             input_field.send_keys(Keys.ENTER)
+
             sleep(2)
             el = driver.find_element(
                 By.XPATH, '//*[@id="search-table-products"]/tbody/tr'
             ).find_element(By.TAG_NAME, "a")
             el.click()
-            print(f"Scraping data for part number: {part_number}")
+
             quality_and_reliability = driver.find_element(
                 By.XPATH, "//span[contains(text(), ' Quality & Reliability ')]"
             )
             quality_and_reliability.click()
             part_name = driver.find_element(
-                By.CLASS_NAME, "st-stage-product__copy").text
+                By.CLASS_NAME, "st-stage-product__copy"
+            ).text
 
             product = driver.find_element(
                 By.XPATH, f"//tr/td[contains(text(), '{part_number}')]"
@@ -2176,12 +2521,11 @@ class Scrapper(Mouser):
             }
             print(
                 f"Data successfully scraped for part number: {part_number}")
-            return result
         except Exception as exc:
             print(exc)
             print(f"Part {part_number} is not found on server.")
             return {"status": 404}
-
+        return result
     # ***************************************  scrape_skywork data from csv.  ***********************************************
 
     def scrape_skywork(self, part_number):

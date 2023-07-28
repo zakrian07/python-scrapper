@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor
 from typing import Set
 import json
+import asyncio
 # from distributors.rshughes import scrap_rshughes
 # from distributors.sager import scrap_sager
 
@@ -671,13 +672,146 @@ async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
-    futures = []
-    for part in body.parts:
-        future = executor.submit(scrapper.scrape_st, (part))
-        futures.append(future)
+    loop = asyncio.get_running_loop()
 
-    for future in futures:
-        myList.append(future.result())
+    for part in body.parts:
+        future = loop.run_in_executor(executor, scrapper.scrape_st, part)
+        result = await future
+        myList.append(result)
+
+    return myList
+
+# scrape_avnet
+
+
+@app.get("/scrape_avnet/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrape_avnet(part_number)
+
+
+@app.post("/scrape_avnet_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    loop = asyncio.get_running_loop()
+
+    for part in body.parts:
+        try:
+            future = loop.run_in_executor(
+                executor, scrapper.scrape_avnet, part)
+            result = await future
+            myList.append(result)
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "Part Number": part,
+            })
+            print(myList)
+
+    return myList
+
+# scrape_distrelec
+
+
+@app.get("/scrape_distrelec/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrape_distrelec(part_number)
+
+
+@app.post("/scrape_distrelec_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    loop = asyncio.get_running_loop()
+
+    for part in body.parts:
+        future = loop.run_in_executor(
+            executor, scrapper.scrape_distrelec, part)
+        result = await future
+        myList.append(result)
+
+    return myList
+
+# scrape_harwin
+
+
+@app.get("/scrape_harwin/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrape_harwin(part_number)
+
+
+@app.post("/scrape_harwin_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    loop = asyncio.get_running_loop()
+
+    for part in body.parts:
+        future = loop.run_in_executor(executor, scrapper.scrape_harwin, part)
+        result = await future
+        myList.append(result)
+
+    return myList
+
+
+@app.get("/scrape_boeing/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrape_boeing(part_number)
+
+
+@app.post("/scrape_boeing_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    loop = asyncio.get_running_loop()
+
+    for part in body.parts:
+        try:
+            future = loop.run_in_executor(
+                executor, scrapper.scrape_boeing, part)
+            result = await future
+            myList.append(result)
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "Part Number": part,
+            })
+            print(myList)
+
+    return myList
+
+# scrape_harwin
+
+
+@app.get("/scrape_index_corp/{part_number:path}")
+def read_item(part_number):
+    print(part_number)
+    return scrapper.scrape_index_corp(part_number)
+
+
+@app.post("/scrape_index_corp_list")
+async def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    loop = asyncio.get_running_loop()
+
+    for part in body.parts:
+        future = loop.run_in_executor(
+            executor, scrapper.scrape_index_corp, part)
+        result = await future
+        myList.append(result)
+
     return myList
 
 
