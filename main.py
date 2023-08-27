@@ -61,12 +61,20 @@ def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_Molex, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_Molex, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        print(future.result())
-        myList.append(future.result())
+    # for future in futures:
+    #     print(future.result())
+    #     myList.append(future.result())
     return myList
 
 
@@ -118,11 +126,19 @@ def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_Te, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_Te, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
     # return scrapper.scrap_Te(part_number)
 
@@ -161,11 +177,19 @@ def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_murata, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_murata, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -192,12 +216,20 @@ async def read_item(body: BodyParam):
     futures = []
     print("scrap_fair_rite====", scrapper.scrap_fair_rite)
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_fair_rite, (part))
-        print("future", future)
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_fair_rite, (part))
+            print("future", future)
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -244,12 +276,20 @@ def read_item(body: BodyParam):
     futures = []
 
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_analog, (part))
-        print("future", future)
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_analog, (part))
+            print("future", future)
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -266,12 +306,20 @@ def read_item(body: BodyParam):
     futures = []
 
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_tdk, (part))
-        print("future", future)
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_tdk, (part))
+            print("future", future)
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -287,11 +335,19 @@ def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_microchip, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_microchip, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -307,11 +363,19 @@ async def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_allegro, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_allegro, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -327,11 +391,19 @@ async def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_yageo, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_yageo, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -347,11 +419,18 @@ def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_leespring, (part))
-        futures.append(future)
-
-    for future in futures:
-        myList.append(future.result())
+        try:
+            future = executor.submit(scrapper.scrap_leespring, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -369,12 +448,17 @@ def read_item(body: BodyParam):
     for part in body.parts:
         try:
             future = executor.submit(scrapper.scrape_mcmaster, (part))
-            futures.append(future)
+            myList.append(future.result())
         except Exception as exc:
-            futures.append(exc)
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -390,11 +474,19 @@ def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_abracon, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_abracon, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -410,11 +502,19 @@ def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_panasonic, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_panasonic, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 # @app.get("/scrap_sager/{part_number}")
 # def read_item(part_number):
@@ -448,12 +548,20 @@ def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_vishay, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_vishay, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
-        print(myList)
+    # for future in futures:
+    #     myList.append(future.result())
+    #     print(myList)
     return myList
 
 
@@ -469,11 +577,19 @@ async def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_alliedelectronics, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_alliedelectronics, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
@@ -489,60 +605,84 @@ async def read_item(body: BodyParam):
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_pemnet, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_pemnet, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
-@app.get("/scrap_belfuse/{part_number}")
+@ app.get("/scrap_belfuse/{part_number}")
 def read_item(part_number):
     return scrapper.scrap_belfuse(part_number)
 
 
-@app.post("/scrap_belfuse_list")
+@ app.post("/scrap_belfuse_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_belfuse, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_belfuse, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
-@app.get("/scrap_radiall/{part_number}")
+@ app.get("/scrap_radiall/{part_number}")
 def read_item(part_number):
     return scrapper.scrap_radiall(part_number)
 
 
-@app.post("/scrap_radiall_list")
+@ app.post("/scrap_radiall_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_radiall, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_radiall, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
-@app.get("/scrap_semtech/{part_number}")
+@ app.get("/scrap_semtech/{part_number}")
 def read_item(part_number):
     return scrapper.scrap_semtech(part_number)
 
 
-@app.post("/scrap_semtech_list")
+@ app.post("/scrap_semtech_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
@@ -557,117 +697,165 @@ async def read_item(body: BodyParam):
     return myList
 
 
-@app.get("/scrap_yuden/{part_number}")
+@ app.get("/scrap_yuden/{part_number}")
 def read_item(part_number):
     return scrapper.scrap_yuden(part_number)
 
 
-@app.post("/scrap_yuden_list")
+@ app.post("/scrap_yuden_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_yuden, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_yuden, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
-@app.get("/scrap_alphawire/{part_number:path}")
+@ app.get("/scrap_alphawire/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrap_alphawire(part_number)
 
 
-@app.post("/scrap_alphawire_list")
+@ app.post("/scrap_alphawire_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_alphawire, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_alphawire, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
-@app.get("/scrap_tti/{part_number:path}")
+@ app.get("/scrap_tti/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrap_tti(part_number)
 
 
-@app.post("/scrap_tti_list")
+@ app.post("/scrap_tti_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_tti, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_tti, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
-@app.get("/scrap_infineon/{part_number:path}")
+@ app.get("/scrap_infineon/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrap_infineon(part_number)
 
 
-@app.post("/scrap_infineon_list")
+@ app.post("/scrap_infineon_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_infineon, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_infineon, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     myList.append(future.result())
     return myList
 
 
-@app.get("/scrape_bivar/{part_number:path}")
+@ app.get("/scrape_bivar/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrape_bivar(part_number)
 
 
-@app.post("/scrape_bivar_list")
+@ app.post("/scrape_bivar_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrape_bivar, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrape_bivar, (part))
+            futures.append(future)
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
     for future in futures:
-        myList.append(future.result())
+        try:
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
     return myList
 
 
-@app.get("/scrape_st/{part_number:path}")
+@ app.get("/scrape_st/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrape_st(part_number)
 
 
-@app.post("/scrape_st_list")
+@ app.post("/scrape_st_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
@@ -675,22 +863,30 @@ async def read_item(body: BodyParam):
     loop = asyncio.get_running_loop()
 
     for part in body.parts:
-        future = loop.run_in_executor(executor, scrapper.scrape_st, part)
-        result = await future
-        myList.append(result)
+        try:
+            future = loop.run_in_executor(executor, scrapper.scrape_st, part)
+            result = await future
+            myList.append(result)
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
     return myList
 
 # scrape_avnet
 
 
-@app.get("/scrape_avnet/{part_number:path}")
+@ app.get("/scrape_avnet/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrape_avnet(part_number)
 
 
-@app.post("/scrape_avnet_list")
+@ app.post("/scrape_avnet_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
@@ -707,6 +903,7 @@ async def read_item(body: BodyParam):
             print(exc)
             myList.append({
                 "Results": "Error",
+                "status": 404,
                 "Part Number": part,
             })
             print(myList)
@@ -716,13 +913,13 @@ async def read_item(body: BodyParam):
 # scrape_distrelec
 
 
-@app.get("/scrape_distrelec/{part_number:path}")
+@ app.get("/scrape_distrelec/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrape_distrelec(part_number)
 
 
-@app.post("/scrape_distrelec_list")
+@ app.post("/scrape_distrelec_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
@@ -730,23 +927,31 @@ async def read_item(body: BodyParam):
     loop = asyncio.get_running_loop()
 
     for part in body.parts:
-        future = loop.run_in_executor(
-            executor, scrapper.scrape_distrelec, part)
-        result = await future
-        myList.append(result)
+        try:
+            future = loop.run_in_executor(
+                executor, scrapper.scrape_distrelec, part)
+            result = await future
+            myList.append(result)
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
     return myList
 
 # scrape_harwin
 
 
-@app.get("/scrape_harwin/{part_number:path}")
+@ app.get("/scrape_harwin/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrape_harwin(part_number)
 
 
-@app.post("/scrape_harwin_list")
+@ app.post("/scrape_harwin_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
@@ -754,20 +959,29 @@ async def read_item(body: BodyParam):
     loop = asyncio.get_running_loop()
 
     for part in body.parts:
-        future = loop.run_in_executor(executor, scrapper.scrape_harwin, part)
-        result = await future
-        myList.append(result)
+        try:
+            future = loop.run_in_executor(
+                executor, scrapper.scrape_harwin, part)
+            result = await future
+            myList.append(result)
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
     return myList
 
 
-@app.get("/scrape_boeing/{part_number:path}")
+@ app.get("/scrape_boeing/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrape_boeing(part_number)
 
 
-@app.post("/scrape_boeing_list")
+@ app.post("/scrape_boeing_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
@@ -793,13 +1007,13 @@ async def read_item(body: BodyParam):
 # scrape_harwin
 
 
-@app.get("/scrape_index_corp/{part_number:path}")
+@ app.get("/scrape_index_corp/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrape_index_corp(part_number)
 
 
-@app.post("/scrape_index_corp_list")
+@ app.post("/scrape_index_corp_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
@@ -807,74 +1021,130 @@ async def read_item(body: BodyParam):
     loop = asyncio.get_running_loop()
 
     for part in body.parts:
-        future = loop.run_in_executor(
-            executor, scrapper.scrape_index_corp, part)
-        result = await future
-        myList.append(result)
+        try:
+            future = loop.run_in_executor(
+                executor, scrapper.scrape_index_corp, part)
+            result = await future
+            myList.append(result)
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
     return myList
 
 
-@app.get("/scrape_skywork/{part_number:path}")
+@ app.get("/scrape_skywork/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrape_skywork(part_number)
 
 
-@app.post("/scrape_skywork_list")
+@ app.post("/scrape_skywork_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrape_skywork, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrape_skywork, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     try:
+    #         myList.append(future.result())
+    #     except Exception as exc:
+    #         print(exc)
+    #         myList.append({
+    #             "Results": "Error",
+    #             "status": 404,
+    #             "Part Number": part,
+    #         })
     return myList
 
 
-@app.get("/scrap_sager/{part_number:path}")
+@ app.get("/scrap_sager/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrap_sager(part_number)
 
 
-@app.post("/scrap_sager_list")
+@ app.post("/scrap_sager_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrap_sager, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrap_sager, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     try:
+    #         myList.append(future.result())
+    #     except Exception as exc:
+    #         print(exc)
+    #         myList.append({
+    #             "Results": "Error",
+    #             "status": 404,
+    #             "Part Number": part,
+    #         })
     return myList
 
 
-@app.get("/scrape_littelfuse/{part_number:path}")
+@ app.get("/scrape_littelfuse/{part_number:path}")
 def read_item(part_number):
     print(part_number)
     return scrapper.scrape_littelfuse(part_number)
 
 
-@app.post("/scrape_littelfuse_list")
+@ app.post("/scrape_littelfuse_list")
 async def read_item(body: BodyParam):
     print("body", body.parts)
     myList = []
     executor = ThreadPoolExecutor()
     futures = []
     for part in body.parts:
-        future = executor.submit(scrapper.scrape_littelfuse, (part))
-        futures.append(future)
+        try:
+            future = executor.submit(scrapper.scrape_littelfuse, (part))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
 
-    for future in futures:
-        myList.append(future.result())
+    # for future in futures:
+    #     try:
+    #         myList.append(future.result())
+    #     except Exception as exc:
+    #         print(exc)
+    #         myList.append({
+    #             "Results": "Error",
+    #             "status": 404,
+    #             "Part Number": part,
+    #         })
     return myList
 # @app.get("/scrap_rshughes/{part_number}")
 # def read_item(part_number):

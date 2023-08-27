@@ -231,6 +231,7 @@ class Scrapper(Mouser):
                 response_pdflist = requests.get(pdf_list_url)
                 soup_pdf = BeautifulSoup(response_pdflist.text, 'lxml')
                 rohs, reach = (None, None)
+                # cannot access local variable 'table' where it is not associated with a value (BUG)
                 for table in soup_pdf.find_all('table', class_="m-table_table"):
                     links_pdf = []
                 for tbody in table.find_all('tbody'):
@@ -546,7 +547,9 @@ class Scrapper(Mouser):
         options.add_argument("--window-size=1920,1080")
 
         base_url = "https://www.infineon.com/cms/en/"
+        # SessionNotCreatedException: Message: session not created: This version of ChromeDriver only supports Chrome version 114
         driver = webdriver.Chrome("/usr/bin/chromedriver", options=options)
+        # Current browser version is 116.0.5845.110 (BUG)
         print(f"Scraping data for part number: {part_number}")
         driver.implicitly_wait(2)
         driver.get(base_url)
@@ -727,6 +730,7 @@ class Scrapper(Mouser):
             qsoup = BeautifulSoup(q_resp.text, 'lxml')
             h1s = qsoup.find_all('h1', class_='entry-title')
             for h1 in h1s:
+                # error found 'NoneType' object has no attribute 'attrs' (BUG)
                 if str(partNumber).lower() in h1.find('a').attrs['href'].lower():
                     url = h1.find('a').attrs['href']
                     break
@@ -746,8 +750,8 @@ class Scrapper(Mouser):
                 "RoHS Certificate of Compliance": soup.find('img', attrs={'src': re.compile(r'.+?rohs_comp\.png')}).parent.attrs['href'],
                 "Safety Data Sheet": ('https://www.fair-rite.com' + sdslink.attrs['href']) if sdslink else None
             }
-        except (IndexError, AttributeError):
-            print('part number is not found on server')
+        except (IndexError, AttributeError) as e:
+            print('part number is not found on server', e)
             return {"status": 404}
 
         print("result=====", result)
@@ -760,6 +764,8 @@ class Scrapper(Mouser):
             print(url + str(partNumber) + '&t=all-content&sort=relevancy')
             driver = webdriver.Chrome(options=options)
             driver.get(url + str(partNumber) + '&t=all-content&sort=relevancy')
+            # SessionNotCreatedException: Message: session not created: This version of ChromeDriver only supports Chrome version 114 (BUG)
+            # Current browser version is 116.0.5845.110
             print("Code goes to sleep")
             time.sleep(10)
             print("Code wakes up")
@@ -880,7 +886,7 @@ class Scrapper(Mouser):
             print("table:", table)
             tr = table.find('tbody').find_all('tr')[0]
             print("tr", tr)
-            if "Part No." in tr:
+            if "Part No." in tr:  # Substring not found! (BUG)
                 print("Substring found!")
                 part_detail = tr.find('td', {'data-label': "Part No."})
                 print("part_detail", part_detail)
@@ -926,6 +932,8 @@ class Scrapper(Mouser):
                     table = products_soup.find(
                         'div', class_="table-scroll div2")
                     headers = table.find('thead').find_all('th')
+                    # here issue in table find funtion its throw error (BUG)
+                    print("-----hello world-----")
                     table_header = list()
                     for th in headers:
                         table_header.append(th.text.strip())
@@ -952,8 +960,8 @@ class Scrapper(Mouser):
                         item_list.append(item)
                         if item['PartNumber'].lower() == partNumber.lower():
                             return item
-        except (IndexError, AttributeError, requests.exceptions.MissingSchema):
-            print('part number is not found on server')
+        except (IndexError, AttributeError, requests.exceptions.MissingSchema) as e:
+            print('part number is not found on server', e)
             return {"status": 404}
 
     def scrap_microchip(self, partNumber):
@@ -987,8 +995,8 @@ class Scrapper(Mouser):
             rohs_response = requests.get(rohs_page_link)
 
             soup_rohs = BeautifulSoup(rohs_response.text, 'lxml')
+            # 'NoneType' object has no attribute 'find' (BUG)
             rohs_table = soup_rohs.find('table', class_='ROHSTable--table')
-
             header = [th.text.strip() for th in rohs_table.find(
                 'thead').find('tr').find_all('th')]
             rohs_certificate, rohs_status = (None, None)
@@ -1013,8 +1021,8 @@ class Scrapper(Mouser):
                 'RohsStatus': rohs_status,
                 'RohsCertificate': rohs_certificate
             }
-        except (IndexError, AttributeError):
-            print('part number is not found on server')
+        except (IndexError, AttributeError) as e:
+            print('part number is not found on server', e)
             return {"status": 404}
         return result
 
@@ -1315,30 +1323,38 @@ class Scrapper(Mouser):
 
     def find_Supplier(self, partnumber):
 
+        suppliers = []
+        result = []
+
         def Check_Response(supplier, response, foundlist):
             try:
                 if response["Results"] == "Found":
-                    foundlist.append(supplier)
+                    print(supplier, response, "helloooooo world00----")
+                    suppliers.append({"supplier": supplier, "data": response})
+                    result.append(response)
             except Exception as e:
                 pass
-
-        suppliers = []
 
         # Checking the response of the scraped data from the two websites.
         response = self.scrap_festo(partnumber)
         Check_Response("Festo", response, suppliers)
+        print("hello world in 1331", response)
 
         response = self.scrap_Arrow(partnumber)
         Check_Response("Arrow", response, suppliers)
+        print("hello world in 000", response)
 
         response = self.scrap_omron(partnumber)
         Check_Response("Omron", response, suppliers)
+        print("hello world in 222", response)
 
         response = self.scrap_Rscomponents(partnumber)
         Check_Response("RS-components", response, suppliers)
+        print("hello world in 333", response)
 
         response = self.scrap_Maxim(partnumber)
-        Check_Response("Maxim Integrated", response, suppliers)
+        Check_Response("Maxim", response, suppliers)
+        print("hello world in 5555", response)
 
         response = self.scrap_Molex(partnumber)
         Check_Response("Molex", response, suppliers)
@@ -1372,7 +1388,7 @@ class Scrapper(Mouser):
 
         response = self.scrap_festo(partnumber)
         Check_Response("Festo", response, suppliers)
-
+        print(suppliers, "hellooo world bro ")
         return suppliers
 
 # get multi parts number response from csv data. iterate parts on server side
@@ -1485,10 +1501,10 @@ class Scrapper(Mouser):
                 'Cateogry': soup.find(id="ClassificationSeriesArea").get_text(strip=True),
                 'Status': soup.find(string="Status").find_next('td').get_text(strip=True),
                 'RoHS': soup.find(string="RoHS Compliance (10 subst.)").find_next('td').get_text(strip=True),
-                'REACH': soup.find(string="REACH Compliance (233 subst.)").find_next('td').get_text(strip=True),
+                # 'REACH': soup.find(string="REACH Compliance (233 subst.)").find_next('td').get_text(strip=True),
             }
-        except AttributeError:
-            print('part number is not found on server.')
+        except AttributeError as e:
+            print('part number is not found on server.', e)
             return {'status': 404}
 
         return result
@@ -1504,15 +1520,15 @@ class Scrapper(Mouser):
                 "Results": "Found",
                 'Part Number': partnumber,
                 'Part Description': soup.find(string='Part Description').find_next('span').get_text(strip=True),
-                'REACH SVH C(224) EC1907/2006': soup.find(string='REACH SVH C(224) EC1907/2006 ').find_next('span').get_text(strip=True).replace("Download Report", ""),
-                'REACH PDF URL': soup.find(string='REACH SVH C(224) EC1907/2006 ').find_next('span').find_next('a')['href'],
+                # 'REACH SVH C(224) EC1907/2006': soup.find(string='REACH SVH C(224) EC1907/2006 ').find_next('span').get_text(strip=True).replace("Download Report", ""),
+                # 'REACH PDF URL': soup.find(string='REACH SVH C(224) EC1907/2006 ').find_next('span').find_next('a')['href'],
                 'RoHS 2/3 Amend 2015/863': soup.find(string='RoHS 2/3 Amend 2015/863 ').find_next('span').get_text(strip=True).replace("Download Report", ""),
                 'RoHS 2/3 Amend 2015/863 PDF URL': soup.find(string='RoHS 2/3 Amend 2015/863 ').find_next('span').find_next('a')['href'],
                 'Halogen Free / Low IEC 61249-2-21/JS709C': soup.find(string='Halogen Free / Low IEC 61249-2-21/JS709C ').find_next('span').get_text(strip=True).replace("Download Report", ""),
                 'RoHS Compliant by Exception': soup.find(string='RoHS Compliant by Exception ').find_next('span').get_text(strip=True)
             }
-        except AttributeError:
-            print('part number is not found on server.')
+        except AttributeError as e:
+            print('part number is not found on server.', e)
             return {'status': 404}
 
         return result
@@ -1595,7 +1611,7 @@ class Scrapper(Mouser):
                 'Part Name': soup.find('p', class_='product-details-description expander-truncate').get_text(strip=True),
                 'Category': soup.find(string="Home").find_next("a").get_text(strip=True),
                 'Datsheet(pdf)': 'https://www.belfuse.com'+soup.find('a', class_='view-datasheet-button btn btn-blue')["href"],
-                'RoHS Declaration': 'https://www.belfuse.com'+soup.find('a', class_='Bel_Fuse-Circuit_Protection-Others')["href"]
+                # 'RoHS Declaration': 'https://www.belfuse.com'+soup.find('a', class_='Bel_Fuse-Circuit_Protection-Others')["href"]
             }
 
         except AttributeError:
@@ -2159,8 +2175,8 @@ class Scrapper(Mouser):
             "render": "true",
         }
         try:
-            resp = requests.get("http://api.scraperapi.com",
-                                params=payload, timeout=60)
+            resp = requests.get("http://api.scraperapi.com",  # here this api request is not responding (BUG).
+                                params=payload, timeout=160)
             soup = BeautifulSoup(resp.content, "html.parser")
             if "Search Result" in soup.title.get_text():
                 product_name_divs = soup.find_all("div", class_="product-name")
@@ -2176,6 +2192,7 @@ class Scrapper(Mouser):
                         == part_number
                     ):
                         payload["url"] = product_name_link["href"]
+                        print("------here------")
                         resp = requests.get(
                             "http://api.scraperapi.com", params=payload, timeout=60
                         )
@@ -2227,23 +2244,21 @@ class Scrapper(Mouser):
             }
         except Exception as e:
             print(f"Part {part_number} is not found on server.", e)
-            raise ValueError({"Results": "Found"})
+            return {"status": 404}
         return result
     # ***************************************  scrape distrelec data from csv.  ***********************************************
 
     def scrape_distrelec(self, part_number):
         options = uc.ChromeOptions()
         options.add_argument("--headless")
-        options.add_argument("--no-sandbox")
-        options.add_argument(
-            "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
-        )
+        options.add_argument("--window-size=1920,1080")
         driver = uc.Chrome(options=options)
         base_url = "https://www.distrelec.de/"
         print(f"Scraping data for part number: {part_number}")
         try:
             driver.implicitly_wait(2)
-            driver.get(base_url)
+            driver.get(base_url)  # unable to connect with this (BUG)
+            print("hello world---")
             accept_cookies_button = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.ID, "ensCloseBanner"))
             )
@@ -2403,7 +2418,9 @@ class Scrapper(Mouser):
             f"https://www.idex-hs.com/store/search-results/1/?searchCriteria={part_number}"
         )
         try:
+            # Error found .WebDriverException: Message: unknown error: cannot connect to chrome at 127.0.0.1:58569 (BUG)
             driver.get(base_url)
+            print("---hellow--")
             product_link = None
 
             # close cookie modal
@@ -2471,7 +2488,9 @@ class Scrapper(Mouser):
         # with uc.Chrome(options=options) as driver:
         try:
             driver.implicitly_wait(2)
+            # WebDriverException: Message: unknown error: cannot connect to chrome at 127.0.0.1:63951 (BUG)
             driver.get(base_url)
+
             search_form_button = driver.find_element(
                 By.XPATH, '//form[@id="form-search"]/div'
             )
@@ -2783,7 +2802,7 @@ class Scrapper(Mouser):
             lead = soup.find(class_='check').find(
                 'p').find_next('p').find_next('p').text.strip()
             status = soup.find(class_='details').find('ul').find_next(
-                'ul').find_next('ul').find('li').find_next('li').text.strip()
+                'ul').find_next('ul').find('li').find_next('li').text.strip()  # here any find fails (BUG)
             print(rohs, lead, status)
             series = soup.find(class_='details').find('ul').find_next('ul').find_next('ul').find_next('ul').find_next('ul').find_next(
                 'ul').find_next('ul').find_next('ul').find_next('ul').find_next('ul').find('li').find_next('li').text.strip()
@@ -2819,6 +2838,7 @@ class Scrapper(Mouser):
             response = requests.request(
                 "GET", url, headers=headers, data=payload)
             soup = BeautifulSoup(response.text, 'lxml')
+            # 'NoneType' object has no attribute 'text' (BUG)
             totalPage = soup.find(class_='search-header-result').text
             page = round(int(totalPage.split('of ')[1].split('F')[0])/50)
             for i in soup.find('tbody').find_all('tr'):
