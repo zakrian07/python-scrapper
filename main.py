@@ -5,8 +5,10 @@ from Scrapper import Scrapper
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor
 from typing import Set
+from typing import List
 import json
 import asyncio
+
 # from distributors.rshughes import scrap_rshughes
 # from distributors.sager import scrap_sager
 
@@ -40,7 +42,32 @@ def read_item(part_number):
 
 @app.get("/omron/{part_number}")
 def read_item(part_number):
+
     return scrapper.scrap_omron(part_number)
+
+
+@app.post("/omron_list")
+def read_item(body: BodyParam):
+    print("body", body.parts)
+    myList = []
+    executor = ThreadPoolExecutor()
+    futures = []
+    for part in body.parts:
+        try:
+            partnumber = part.replace("&45F", "/")
+            future = executor.submit(scrapper.scrap_omron, (partnumber))
+            myList.append(future.result())
+        except Exception as exc:
+            print(exc)
+            myList.append({
+                "Results": "Error",
+                "status": 404,
+                "Part Number": part,
+            })
+
+    # for future in futures:
+    #     myList.append(future.result())
+    return myList
 
 
 @app.get("/arrow/{part_number}")

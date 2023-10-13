@@ -17,7 +17,7 @@ sniffio
 soupsieve
 starlette
 typing-extensions
-urllib3
+urllib3==1.26.7
 uvicorn
 watchfiles
 websockets

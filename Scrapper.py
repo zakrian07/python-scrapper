@@ -20,7 +20,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 import ssl
 
-
 # from distributors.rshughes import scrap_rshughes
 
 options = webdriver.ChromeOptions()
@@ -192,7 +191,7 @@ class Scrapper(Mouser):
                 series = series_re.group(1)
             else:
                 series = partNumber
-            print(response.text)
+
             soup = BeautifulSoup(response.text, 'lxml')
             status_icons = soup.find('ul', class_='detail-status-icon')
             for icon in status_icons.find_all('li'):
@@ -211,51 +210,57 @@ class Scrapper(Mouser):
                     break
 
             def search_doc_link(type_: list, section):
+                doc_link = ''
                 docs_divs = soup.find_all('div', class_="detail-sidenavi")
                 for dd in docs_divs:
                     if dd.find('h2', text=section):
                         for doc_a in dd.find_all('a'):
-                            for t in type_:
-                                if t in doc_a.text:
-                                    doc_link = doc_a.attrs['href']
+                            if doc_a.text.strip() in type_:
+                                doc_link = doc_a['href']
                                 if not doc_link.startswith('http'):
-                                    return 'https://murata.com/' + doc_link
-                                else:
-                                    return doc_link
-
-            dsheet = search_doc_link(
-                ['Data Sheet', 'Specifications Sheet'], 'Details')
-            rohs_url = search_doc_link(['RoHS'], 'Related Links')
-            reach_url = search_doc_link(['REACH'], 'Related Links')
+                                    doc_link = 'https://www.murata.com' + doc_link
+                                return doc_link
+                return doc_link
+            dsheet = search_doc_link(['Data Sheet', 'Specifications Sheet'], 'Details')
+            rohs_url = 'https://www.murata.com/en-us/products/inductor/power-mps/documents/environment'
+            reach_url = 'https://www.murata.com/en-us/support/compliance/reach'
             for pdf_list_url in {rohs_url, reach_url}:
                 response_pdflist = requests.get(pdf_list_url)
                 soup_pdf = BeautifulSoup(response_pdflist.text, 'lxml')
                 rohs, reach = (None, None)
-                # cannot access local variable 'table' where it is not associated with a value (BUG)
+
+                # Process the table within the same loop
                 for table in soup_pdf.find_all('table', class_="m-table_table"):
                     links_pdf = []
-                for tbody in table.find_all('tbody'):
-                    for tr in table.find_all('tr'):
-                        tds = tr.find_all('td')
-                    if tds:
-                        series_pdf = tds[0].text.split()[0].rstrip('*')
-                        links_pdf.append(
-                            (series_pdf, tds[1].find('a').attrs['href']))
-                links_pdf = sorted(links_pdf, key=lambda x: -len(x[0]))
-                for sr_pdf, pdf_link in links_pdf:
-                    if sr_pdf in series:
-                        if '-rohs-' in tds[1].find('a').attrs['href'] and rohs is None:
-                            rohs = 'https://www.murata.com' + pdf_link
-                    elif '-reach-' in tds[1].find('a').attrs['href'] and reach is None:
-                        reach = 'https://www.murata.com' + pdf_link
+
+                    for tbody in table.find_all('tbody'):
+                        for tr in tbody.find_all('tr'):
+                            tds = tr.find_all('td')
+                            if len(tds) >= 2 and tds[1]:
+                                series_pdf = tds[0].text.split()[0].rstrip('*')
+                                link_a = tds[1].find('a')
+                                if link_a:
+                                    pdf_link = link_a.attrs.get('href')
+                                    if pdf_link:
+                                        links_pdf.append(
+                                            (series_pdf, 'https://www.murata.com' + pdf_link))
+
+                    links_pdf = sorted(links_pdf, key=lambda x: -len(x[0]))
+
+                    for sr_pdf, pdf_link in links_pdf:
+                        if sr_pdf in series:
+                            if '-rohs-' in pdf_link and rohs is None:
+                                rohs = pdf_link
+                            elif '-reach-' in pdf_link and reach is None:
+                                reach = pdf_link
             result = {
                 'Results': 'Found',
                 'status': status,
                 'partNumber': partNumber,
                 'partName': soup.find('h1').text.strip(),
                 'DataSheet': dsheet,
-                'RoHS': rohs,
-                'REACH': reach
+                'RoHS': rohs_url,
+                'REACH': reach_url
             }
         except Exception as e:
             print(e)
@@ -415,20 +420,36 @@ class Scrapper(Mouser):
         soup = BeautifulSoup(response.text, 'lxml')
         try:
             Results = 'Found'
+
             dSPNGrabbed = soup.find(
                 class_='cmp-pdp__overview-product-info').find_all('span')[0].text.strip()
             PartStatus = soup.find(
                 class_='cmp-pdp__overview-status').find('span').text.strip()
-            Reach = soup.find(
-                class_='cmp-pdp__compliance').find_all('dd')[-2].text.strip()
-            Rohs = soup.find(
-                class_='cmp-pdp__compliance').find_all('dd')[-1].text.strip()
+
+            compliance_section = soup.find(class_='cmp-pdp__compliance')
+            Reach = "N/A"  # Default value
+
+            if compliance_section:
+                compliance_items = compliance_section.find_all('td')
+                if len(compliance_items) > 4:
+                    Reach = compliance_items[4].text.strip()
+
+            rohs_section = soup.find(class_='cmp-pdp__compliance')
+            rohs = "N/A"
+            if rohs_section:
+                compliance_items = compliance_section.find_all('td')
+                if len(compliance_items) > 5:
+                    rohs = compliance_items[5].text.strip()
+
             SPNGrabbed = soup.find(
                 class_='cmp-pdp__overview-product-info').find_all('span')[0].text
             DeclarationLink = "https://www.molex.com/molex/electrical_model/rohsCoC.jsp?data=" + \
-                urllib.parse.quote(SPNGrabbed, safe="")
-            return {"Results": Results, "dSPNGrabbed": dSPNGrabbed, "PartStatus": PartStatus, "Reach": Reach, "Rohs": Rohs, "SPNGrabbed": SPNGrabbed, DeclarationLink: DeclarationLink}
+                              urllib.parse.quote(SPNGrabbed, safe="")
+
+            return {"Results": Results, "dSPNGrabbed": dSPNGrabbed, "PartStatus": PartStatus, "Reach": Reach,
+                    "Rohs": rohs, "SPNGrabbed": SPNGrabbed, "DeclarationLink": DeclarationLink}
         except Exception as e:
+            print("Evaluating Results are failing here in exception: ")
             print(e)
             return {"status": 404}
 
@@ -721,7 +742,9 @@ class Scrapper(Mouser):
 
         except Exception as e:
             print(e)
-            return {"status": 404}
+            return {"Results": "Error",
+                    "status": 404,
+                    "Part Number": partnumber, }
 
     def scrap_fair_rite(self, partNumber):
         try:
@@ -966,12 +989,18 @@ class Scrapper(Mouser):
 
     def scrap_microchip(self, partNumber):
         try:
-            url = 'https://www.microchip.com/sitesearch/api/autosuggestapi/GetAutoSuggest?q=' + \
-                str(partNumber)
-            response = requests.get(url)
-            url_product = 'https://www.microchip.com/en-us/product/' + \
-                response.text.strip('"\\r\\n')
+            parts = partNumber.split("-")
+            resulting = parts[0]
 
+            # url = 'https://www.microchip.com/sitesearch/api/autosuggestapi/GetAutoSuggest?q=' + \
+            #     str(partNumber)
+            # print('Printing url first: ', partNumber)
+            # response = requests.get(url)
+            # print('After we receive response :', response)
+            # https: // www.microchip.com / en - us / product / ATSAM4LS8A
+            url_product = 'https://www.microchip.com/en-us/product/' + \
+                str(resulting)
+            print('url product :', url_product)
             response_product = requests.get(url_product)
 
             soup = BeautifulSoup(response_product.text, 'lxml')
@@ -1124,6 +1153,7 @@ class Scrapper(Mouser):
             return {"status": 404}
 
     def scrap_omron(self, partnumber):
+        print(partnumber, "-------")
         url = "https://industrial.omron.eu/en/api/rohs_reach/search.json?q=" + partnumber
 
         payload = {}
@@ -1322,7 +1352,7 @@ class Scrapper(Mouser):
                 return {"status": 404}
 
     def find_Supplier(self, partnumber):
-
+        print('Finding supplier ', partnumber)
         suppliers = []
         result = []
 
@@ -1897,12 +1927,12 @@ class Scrapper(Mouser):
          # ***************************************  scrap_analog data from web.  ***********************************************
 
     def scrap_analog(self, part_number):
-        options = Options()
-        options.add_argument("--headless")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1920,1080")
+        local_options = Options()
+        local_options.add_argument("--headless")
+        local_options.add_argument("--no-sandbox")
+        local_options.add_argument("--disable-dev-shm-usage")
+        local_options.add_argument("--disable-gpu")
+        local_options.add_argument("--window-size=1920,1080")
 
         columns = [
             "Part Number",
@@ -1913,10 +1943,10 @@ class Scrapper(Mouser):
             "Datasheet",
         ]
         base_url = "https://www.analog.com"
-        print(f"Scraping data for part number: {part_number}")
         url = f"https://www.analog.com/en/products/{part_number}.html#product-overview"
 
-        driver = webdriver.Chrome("/usr/bin/chromedriver", options=options)
+        # driver = webdriver.Chrome("/usr/bin/chromedriver", options=local_options)
+        driver = webdriver.Chrome(options=local_options)
         driver.implicitly_wait(2)
         driver.get(url)
         try:
@@ -2410,17 +2440,17 @@ class Scrapper(Mouser):
 
     def scrape_index_corp(self, part_number):
         options = uc.ChromeOptions()
-        options.add_argument("--headless")
+        print("hello world ----- in", part_number)
+        options.add_argument("--headless")   # here  script fails (BUG)
         options.add_argument("--window-size=1920,1080")
         driver = uc.Chrome(options=options)
         print(f"Scraping data for part number: {part_number}")
         base_url = (
             f"https://www.idex-hs.com/store/search-results/1/?searchCriteria={part_number}"
         )
+
         try:
-            # Error found .WebDriverException: Message: unknown error: cannot connect to chrome at 127.0.0.1:58569 (BUG)
             driver.get(base_url)
-            print("---hellow--")
             product_link = None
 
             # close cookie modal
@@ -2465,7 +2495,6 @@ class Scrapper(Mouser):
                 pass
 
             result = {
-                "Results": "Found",
                 "Part Number": part_number,
                 "Part Name": part_name,
                 "Description": description,
@@ -2479,71 +2508,66 @@ class Scrapper(Mouser):
 
     def scrape_st(self, part_number):
         options = uc.ChromeOptions()
-        options.add_argument("--headless")
-        # options.binary_location = '/usr/bin/chromedriver'
+        options.add_argument("--headless")  # here  script fails (BUG)
         options.add_argument("--window-size=1920,1080")
         base_url = "https://www.st.com"
         print(f"Scraping data for part number: {part_number}")
-        driver = uc.Chrome(options=options)
-        # with uc.Chrome(options=options) as driver:
-        try:
-            driver.implicitly_wait(2)
-            # WebDriverException: Message: unknown error: cannot connect to chrome at 127.0.0.1:63951 (BUG)
-            driver.get(base_url)
+        with uc.Chrome(options=options) as driver:
+            try:
+                driver.implicitly_wait(2)
+                driver.get(base_url)
+                search_form_button = driver.find_element(
+                    By.XPATH, '//form[@id="form-search"]/div'
+                )
+                search_form_button.click()
 
-            search_form_button = driver.find_element(
-                By.XPATH, '//form[@id="form-search"]/div'
-            )
-            search_form_button.click()
+                input_field = driver.find_element(By.ID, "widgetSearchBar")
 
-            input_field = driver.find_element(By.ID, "widgetSearchBar")
+                input_field.send_keys(part_number)
 
-            input_field.send_keys(part_number)
+                input_field.send_keys(Keys.ENTER)
 
-            input_field.send_keys(Keys.ENTER)
+                sleep(2)
+                el = driver.find_element(
+                    By.XPATH, '//*[@id="search-table-products"]/tbody/tr'
+                ).find_element(By.TAG_NAME, "a")
+                el.click()
 
-            sleep(2)
-            el = driver.find_element(
-                By.XPATH, '//*[@id="search-table-products"]/tbody/tr'
-            ).find_element(By.TAG_NAME, "a")
-            el.click()
+                quality_and_reliability = driver.find_element(
+                    By.XPATH, "//span[contains(text(), ' Quality & Reliability ')]"
+                )
+                quality_and_reliability.click()
+                part_name = driver.find_element(
+                    By.CLASS_NAME, "st-stage-product__copy"
+                ).text
 
-            quality_and_reliability = driver.find_element(
-                By.XPATH, "//span[contains(text(), ' Quality & Reliability ')]"
-            )
-            quality_and_reliability.click()
-            part_name = driver.find_element(
-                By.CLASS_NAME, "st-stage-product__copy"
-            ).text
+                product = driver.find_element(
+                    By.XPATH, f"//tr/td[contains(text(), '{part_number}')]"
+                )
+                product_row = product.find_elements(By.XPATH, "../td")
+                product_status = product_row[1].text
+                rohs_compliance_grade = product_row[-2].text
+                material_declaration = "N/A"
+                mat_declaration_tag = product_row[-1].find_elements(
+                    By.TAG_NAME, "a")
+                if mat_declaration_tag:
+                    material_declaration = mat_declaration_tag[0].get_attribute(
+                        "href")
 
-            product = driver.find_element(
-                By.XPATH, f"//tr/td[contains(text(), '{part_number}')]"
-            )
-            product_row = product.find_elements(By.XPATH, "../td")
-            product_status = product_row[1].text
-            rohs_compliance_grade = product_row[-2].text
-            material_declaration = "N/A"
-            mat_declaration_tag = product_row[-1].find_elements(
-                By.TAG_NAME, "a")
-            if mat_declaration_tag:
-                material_declaration = mat_declaration_tag[0].get_attribute(
-                    "href")
-
-            result = {
-                "Results": "Found",
-                "Part Number": part_number,
-                "Part Name": part_name,
-                "Status": product_status,
-                "RoHS Compliant Status": product_status,
-                "RoHS Compliance Grade": rohs_compliance_grade,
-                "Material Declaration": material_declaration,
-            }
-            print(
-                f"Data successfully scraped for part number: {part_number}")
-        except Exception as exc:
-            print(exc)
-            print(f"Part {part_number} is not found on server.")
-            return {"status": 404}
+                result = {
+                    "Part Number": part_number,
+                    "Part Name": part_name,
+                    "Status": product_status,
+                    "RoHS Compliant Status": product_status,
+                    "RoHS Compliance Grade": rohs_compliance_grade,
+                    "Material Declaration": material_declaration,
+                }
+                print(
+                    f"Data successfully scraped for part number: {part_number}")
+            except Exception as exc:
+                print(exc)
+                print(f"Part {part_number} is not found on server.")
+                return {"status": 404}
         return result
     # ***************************************  scrape_skywork data from csv.  ***********************************************
 

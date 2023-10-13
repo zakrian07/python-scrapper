@@ -2,17 +2,17 @@ import requests
 
 class Mouser:
     def scrap_mouser(self, partnumber, API_Key='c8cc8913-3363-4547-a4f6-d48218731924'):
-
         # normal search
         url = 'https://api.mouser.com/api/v1/search/partnumber'
-        requestbody = {"SearchByPartRequest": { "mouserPartNumber": partnumber, "partSearchOptions": 2}}
+        requestbody = {"SearchByPartRequest": {"mouserPartNumber": partnumber, "partSearchOptions": 2}}
         parameters = {'apiKey': API_Key}
 
         headers = {
             'x-requested-with': 'XMLHttpRequest'
         }
-
+        print('Going to get response : ')
         response = requests.post(url, headers=headers, params=parameters,json=requestbody).json()
+        print('Found Some response : ', response)
         searchresults = response["SearchResults"]
 
         if searchresults.get('NumberOfResult', 0) > 0:
